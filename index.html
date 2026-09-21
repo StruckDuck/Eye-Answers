@@ -55,22 +55,28 @@
   .type-field{
     position:absolute;
     left:50%;
-    background:none;
-    border:none;
-    border-bottom: 1px solid rgba(42,38,32,.38);
-    padding: 4px 2px 6px;
+    background: #D0D0D1; /* same grey as the sclera / pupil-text */
+    border: 1px solid rgba(42,38,32,.18);
+    border-radius: 8px;
+    padding: 6px 10px;
     width: 82%;
+    height: 3.2em;
+    resize: none;
+    overflow: hidden;
     transform: translate(-50%, -50%);
     font-family: 'Monthoers', Georgia, serif;
     font-size: clamp(0.95rem, 4.2vw, 1.4rem);
+    line-height: 1.3;
     color: var(--charcoal);
     text-align:left;
     outline:none;
     caret-color: var(--focus);
+    box-shadow: 0 0 0 0 rgba(201,169,110,0);
+    transition: box-shadow .15s ease;
     z-index:5;
   }
   .type-field::placeholder{ color: rgba(42,38,32,.35); }
-  .type-field:focus{ border-bottom-color: var(--focus); }
+  .type-field:focus{ box-shadow: 0 0 0 2px rgba(201,169,110,.55); }
   .offering-pos{ top: 16%; }
   .question-pos{ top: 84%; }
 
@@ -149,13 +155,13 @@
     <img class="eye-backer" src="assets/eye-backer.png" alt="">
     <div class="eye-content" id="eyeContent"></div>
     <img class="eye-top" id="eyeTop" src="assets/eye-window-open.png" alt="">
-    <input class="type-field offering-pos" id="offeringInput" type="text"
+    <textarea class="type-field offering-pos" id="offeringInput" rows="2"
       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-      enterkeyhint="done" aria-label="Offering">
-    <input class="type-field question-pos" id="questionInput" type="text"
+      enterkeyhint="done" aria-label="Offering"></textarea>
+    <textarea class="type-field question-pos" id="questionInput" rows="2"
       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-      enterkeyhint="done" aria-label="Question">
-    <button class="zit-btn" id="zitBtn" type="button" aria-label=""></button>
+      enterkeyhint="done" aria-label="Question"></textarea>
+    <button class="zit-btn" id="zitBtn" type="button" tabindex="-1" aria-label=""></button>
   </div>
 </div>
 
@@ -247,6 +253,13 @@
   //        locks forever. if nothing was captured, it stays live so the
   //        operator gets another chance.
   // ============================================================
+  // the zit must never take keyboard focus away from whatever field the
+  // operator is mid-sentence in -- otherwise tapping it dismisses the
+  // on-screen keyboard and kills capture mode along with it
+  ['pointerdown', 'mousedown', 'touchstart'].forEach(function(evt){
+    zitBtn.addEventListener(evt, function(e){ e.preventDefault(); }, { passive:false });
+  });
+
   zitBtn.addEventListener('click', function(e){
     e.stopPropagation();
     if (capture.locked) return;
@@ -368,13 +381,24 @@
     var offsets = measured.offsets.map(function(o){
       return { ch: o.ch, dx: o.dx * scale, dy: 0 };
     });
-    return { fontPx: fontPx, offsets: offsets };
+    return { fontPx: fontPx, offsets: offsets, totalWidth: measured.totalWidth * scale };
   }
 
   var ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   function randomLetter(){ return ALPHA[Math.floor(Math.random() * ALPHA.length)]; }
 
-  function spawnTile(layer, ch, scatterFrac, target, rect, fontPx, isDecoy){
+  // timing: everything sits still for LINGER_MS, then real letters glide
+  // to their spot over CONVERGE_MS. decoys travel that same CONVERGE_MS
+  // to pass through the small central zone (arriving there at the exact
+  // same moment the real letters land), then peel away and fade over the
+  // shorter EXIT_MS that follows -- so for most of the reveal every
+  // letter looks the same, and only at the very end does it become clear
+  // which ones were real.
+  var LINGER_MS = 1000;
+  var CONVERGE_MS = 4000;
+  var EXIT_MS = 900;
+
+  function spawnRealTile(layer, ch, scatterFrac, target, rect, fontPx){
     var startX = (scatterFrac.x - 0.5) * rect.width;
     var startY = (scatterFrac.y - 0.5) * rect.height;
     var startRot = Math.random() * 24 - 12;
@@ -387,35 +411,48 @@
     el.style.transform = startTransform;
     layer.appendChild(el);
 
-    if (!isDecoy){
-      var endTransform = 'translate(-50%,-50%) translate(' + target.dx + 'px,' + target.dy + 'px) rotate(0deg)';
-      el.animate(
-        [{ transform: startTransform }, { transform: endTransform }],
-        { duration: 1500 + Math.random() * 300, easing: 'cubic-bezier(.22,.61,.36,1)', fill: 'forwards' }
-      );
-    } else {
-      // continue outward along the same direction the decoy already
-      // scattered to, well past the visible edge of the eye, fading out
-      // slowly as it goes
-      var mag = Math.sqrt(startX*startX + startY*startY);
-      var ux, uy;
-      if (mag < 1){
-        var ang = Math.random() * Math.PI * 2;
-        ux = Math.cos(ang); uy = Math.sin(ang);
-      } else {
-        ux = startX / mag; uy = startY / mag;
-      }
-      var farDist = Math.max(rect.width, rect.height) * 0.95;
-      var endX = ux * farDist, endY = uy * farDist;
-      var midX = startX + (endX - startX) * 0.55;
-      var midY = startY + (endY - startY) * 0.55;
-      var endTransform = 'translate(-50%,-50%) translate(' + endX + 'px,' + endY + 'px) rotate(' + (startRot*2) + 'deg)';
-      el.animate([
-        { transform: startTransform, opacity: 1, offset: 0 },
-        { transform: 'translate(-50%,-50%) translate(' + midX + 'px,' + midY + 'px) rotate(' + startRot + 'deg)', opacity: 1, offset: 0.55 },
-        { transform: endTransform, opacity: 0, offset: 1 }
-      ], { duration: 3200 + Math.random() * 800, easing: 'ease-in', fill: 'forwards' });
-    }
+    var endTransform = 'translate(-50%,-50%) translate(' + target.dx + 'px,' + target.dy + 'px) rotate(0deg)';
+    el.animate(
+      [{ transform: startTransform }, { transform: endTransform }],
+      { duration: CONVERGE_MS, delay: LINGER_MS, easing: 'cubic-bezier(.45,.05,.55,.95)', fill: 'forwards' }
+    );
+  }
+
+  function spawnDecoyTile(layer, ch, scatterFrac, zoneRadiusPx, rect, fontPx){
+    var startX = (scatterFrac.x - 0.5) * rect.width;
+    var startY = (scatterFrac.y - 0.5) * rect.height;
+    var startRot = Math.random() * 24 - 12;
+
+    // a random point inside the small central zone -- this is where the
+    // decoy will be at the same instant the real letters lock into place
+    var passAngle = Math.random() * Math.PI * 2;
+    var passR = Math.sqrt(Math.random()) * zoneRadiusPx;
+    var passX = Math.cos(passAngle) * passR;
+    var passY = Math.sin(passAngle) * passR;
+
+    // keep travelling in that same straight line, on out past the far
+    // edge of the eye, so the exit looks like a natural continuation
+    var dx = passX - startX, dy = passY - startY;
+    var passDist = Math.sqrt(dx*dx + dy*dy) || 1;
+    var ux = dx / passDist, uy = dy / passDist;
+    var farDist = Math.max(rect.width, rect.height) * 0.95;
+    var endX = passX + ux * farDist, endY = passY + uy * farDist;
+
+    var el = document.createElement('div');
+    el.className = 'reveal-letter';
+    el.textContent = ch;
+    el.style.fontSize = fontPx + 'px';
+    var startTransform = 'translate(-50%,-50%) translate(' + startX + 'px,' + startY + 'px) rotate(' + startRot + 'deg)';
+    el.style.transform = startTransform;
+    layer.appendChild(el);
+
+    var totalDuration = CONVERGE_MS + EXIT_MS;
+    var passOffset = CONVERGE_MS / totalDuration;
+    el.animate([
+      { transform: startTransform, opacity: 1, offset: 0 },
+      { transform: 'translate(-50%,-50%) translate(' + passX + 'px,' + passY + 'px) rotate(' + startRot + 'deg)', opacity: 1, offset: passOffset },
+      { transform: 'translate(-50%,-50%) translate(' + endX + 'px,' + endY + 'px) rotate(' + (startRot*2) + 'deg)', opacity: 0, offset: 1 }
+    ], { duration: totalDuration, delay: LINGER_MS, easing: 'cubic-bezier(.45,.05,.55,.95)', fill: 'forwards' });
   }
 
   function playLetterReveal(){
@@ -429,16 +466,21 @@
     var positions = shuffledCopy(scatterPositionsForLetters(realTiles.length + decoyCount));
     var rect = eyeContent.getBoundingClientRect();
 
+    // diameter of about 6 characters, using this answer's own average
+    // character width so it scales with font size
+    var avgCharWidth = layout.totalWidth / Math.max(1, answer.length);
+    var zoneRadiusPx = (avgCharWidth * 6) / 2;
+
     var layer = document.createElement('div');
     layer.className = 'reveal-layer';
     eyeContent.appendChild(layer);
 
     var idx = 0;
     realTiles.forEach(function(tile){
-      spawnTile(layer, tile.ch, positions[idx++], { dx: tile.dx, dy: tile.dy }, rect, layout.fontPx, false);
+      spawnRealTile(layer, tile.ch, positions[idx++], { dx: tile.dx, dy: tile.dy }, rect, layout.fontPx);
     });
     for (var i = 0; i < decoyCount; i++){
-      spawnTile(layer, randomLetter(), positions[idx++], null, rect, layout.fontPx, true);
+      spawnDecoyTile(layer, randomLetter(), positions[idx++], zoneRadiusPx, rect, layout.fontPx);
     }
   }
 
@@ -468,9 +510,9 @@
       eyeTop.src = EYE_OPEN_SRC;
       eyeStage.classList.remove('busy');
       state.busy = false;
-      // give the reveal animations (up to ~4s) room to finish before any
-      // idle blink is allowed to interrupt them
-      setTimeout(scheduleIdleBlink, 4200);
+      // give the reveal animations (linger + converge + decoy exit) room
+      // to finish before any idle blink is allowed to interrupt them
+      setTimeout(scheduleIdleBlink, LINGER_MS + CONVERGE_MS + EXIT_MS + 400);
     }, CLOSING_DURATION + REVEAL_HOLD_MS + OPENING_DURATION);
   }
 
