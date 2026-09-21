@@ -156,10 +156,10 @@
     <img class="eye-backer" src="assets/eye-backer.png" alt="">
     <div class="eye-content" id="eyeContent"></div>
     <img class="eye-top" id="eyeTop" src="assets/eye-window-open.png" alt="">
-    <textarea class="type-field offering-pos" id="offeringInput" rows="2"
+    <textarea class="type-field offering-pos" id="offeringInput" rows="2" placeholder="Offering"
       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
       enterkeyhint="done" aria-label="Offering"></textarea>
-    <textarea class="type-field question-pos" id="questionInput" rows="2"
+    <textarea class="type-field question-pos" id="questionInput" rows="2" placeholder="Question"
       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
       enterkeyhint="done" aria-label="Question"></textarea>
     <button class="zit-btn" id="zitBtn" type="button" tabindex="-1" aria-label=""></button>
@@ -260,8 +260,9 @@
   // default on mousedown (the standard, well-proven trick for this) stops
   // the focus steal; the actual toggle runs on plain "click", which is
   // the one event type iOS Safari reliably fires for a tap like this.
+  // (note: this must stay mousedown-only -- preventDefault on touchstart
+  // cancels the synthetic mousedown/click chain entirely on iOS Safari)
   zitBtn.addEventListener('mousedown', function(e){ e.preventDefault(); });
-  zitBtn.addEventListener('touchstart', function(e){ e.preventDefault(); }, { passive:false });
 
   zitBtn.addEventListener('click', function(e){
     e.stopPropagation();
@@ -393,13 +394,13 @@
   // timing: everything sits still for LINGER_MS, then real letters glide
   // to their spot over CONVERGE_MS. decoys travel that same CONVERGE_MS
   // to pass through the small central zone (arriving there at the exact
-  // same moment the real letters land), then peel away and fade over the
-  // shorter EXIT_MS that follows -- so for most of the reveal every
-  // letter looks the same, and only at the very end does it become clear
-  // which ones were real.
+  // same moment the real letters land), then continue on at their own
+  // matching pace until they pass behind the card's opaque art -- so for
+  // most of the reveal every letter looks the same, and only at the very
+  // end does it become clear which ones were real.
   var LINGER_MS = 1000;
   var CONVERGE_MS = 4000;
-  var EXIT_MS = 900;
+  var MAX_EXIT_MS = 4000; // clamp for decoys with an unusually short approach
 
   function spawnRealTile(layer, ch, scatterFrac, target, rect, fontPx){
     var startX = (scatterFrac.x - 0.5) * rect.width;
@@ -433,13 +434,25 @@
     var passX = Math.cos(passAngle) * passR;
     var passY = Math.sin(passAngle) * passR;
 
-    // keep travelling in that same straight line, on out past the far
-    // edge of the eye, so the exit looks like a natural continuation
     var dx = passX - startX, dy = passY - startY;
     var passDist = Math.sqrt(dx*dx + dy*dy) || 1;
     var ux = dx / passDist, uy = dy / passDist;
-    var farDist = Math.max(rect.width, rect.height) * 0.95;
-    var endX = passX + ux * farDist, endY = passY + uy * farDist;
+
+    // exit just far enough past the eye's actual transparent window (the
+    // same tuned ellipse used to scatter everything) that it disappears
+    // behind the opaque card art rather than floating past the edge of
+    // the stage -- no fading needed, the artwork itself hides it
+    var rxPx = 0.241 * rect.width, ryPx = 0.138 * rect.height;
+    var denom = Math.sqrt((ux/rxPx)*(ux/rxPx) + (uy/ryPx)*(uy/ryPx));
+    var edgeDist = denom > 0 ? (1/denom) : Math.max(rxPx, ryPx);
+    var exitDist = edgeDist * 1.4;
+
+    // continue at the same speed it was already travelling at, so there's
+    // no sudden burst of speed on the way out
+    var speed = passDist / CONVERGE_MS;
+    var exitDuration = Math.min(MAX_EXIT_MS, Math.max(400, exitDist / speed));
+
+    var endX = passX + ux * exitDist, endY = passY + uy * exitDist;
 
     var el = document.createElement('div');
     el.className = 'reveal-letter';
@@ -449,12 +462,12 @@
     el.style.transform = startTransform;
     layer.appendChild(el);
 
-    var totalDuration = CONVERGE_MS + EXIT_MS;
+    var totalDuration = CONVERGE_MS + exitDuration;
     var passOffset = CONVERGE_MS / totalDuration;
     el.animate([
-      { transform: startTransform, opacity: 1, offset: 0 },
-      { transform: 'translate(-50%,-50%) translate(' + passX + 'px,' + passY + 'px) rotate(' + startRot + 'deg)', opacity: 1, offset: passOffset },
-      { transform: 'translate(-50%,-50%) translate(' + endX + 'px,' + endY + 'px) rotate(' + (startRot*2) + 'deg)', opacity: 0, offset: 1 }
+      { transform: startTransform, offset: 0 },
+      { transform: 'translate(-50%,-50%) translate(' + passX + 'px,' + passY + 'px) rotate(' + startRot + 'deg)', offset: passOffset },
+      { transform: 'translate(-50%,-50%) translate(' + endX + 'px,' + endY + 'px) rotate(' + (startRot*2) + 'deg)', offset: 1 }
     ], { duration: totalDuration, delay: LINGER_MS, easing: 'cubic-bezier(.45,.05,.55,.95)', fill: 'forwards' });
   }
 
@@ -515,7 +528,7 @@
       state.busy = false;
       // give the reveal animations (linger + converge + decoy exit) room
       // to finish before any idle blink is allowed to interrupt them
-      setTimeout(scheduleIdleBlink, LINGER_MS + CONVERGE_MS + EXIT_MS + 400);
+      setTimeout(scheduleIdleBlink, LINGER_MS + CONVERGE_MS + MAX_EXIT_MS + 400);
     }, CLOSING_DURATION + REVEAL_HOLD_MS + OPENING_DURATION);
   }
 
