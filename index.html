@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>The Eye</title>
+<meta property="og:title" content="The Eye">
+<meta property="og:type" content="website">
+<meta property="og:image" content="assets/link-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="assets/link-preview.png">
+<style>
+  @font-face{
+    font-family: 'Monthoers';
+    src: url('assets/monthoers.ttf') format('truetype');
+    font-display: swap;
+  }
+  :root{
+    --ink:#41504F;
+    --charcoal:#2A2620;
+    --focus:#C9A96E;
+  }
+  *{ box-sizing: border-box; }
+  html, body{
+    margin:0; padding:0; height:100%;
+    background: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body{
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh; overflow:hidden;
+  }
+
+  .app{
+    display:flex; flex-direction:column; align-items:center;
+    gap: 14px; width: 100%; padding: 24px 16px;
+  }
+
+  .reset-btn{
+    position:fixed; top:16px; right:16px; z-index:50;
+    background:none; border:none; cursor:pointer;
+    padding:8px 10px;
+    opacity:.75; transition: opacity .2s ease;
+  }
+  .reset-btn:hover{ opacity:1; }
+  .reset-btn span{
+    font-family: 'Monthoers', Georgia, serif;
+    font-size: 1.725rem;
+    color: #EAE1C8;
+  }
+
+  /* ---- offering / question fields, sitting where YES/NO used to live ---- */
+  .type-field{
+    position:absolute;
+    left:50%;
+    background:none;
+    border:none;
+    border-bottom: 1px solid rgba(42,38,32,.38);
+    padding: 4px 2px 6px;
+    width: 82%;
+    transform: translate(-50%, -50%);
+    font-family: 'Monthoers', Georgia, serif;
+    font-size: clamp(0.95rem, 4.2vw, 1.4rem);
+    color: var(--charcoal);
+    text-align:left;
+    outline:none;
+    caret-color: var(--focus);
+    z-index:5;
+  }
+  .type-field::placeholder{ color: rgba(42,38,32,.35); }
+  .type-field:focus{ border-bottom-color: var(--focus); }
+  .offering-pos{ top: 16%; }
+  .question-pos{ top: 84%; }
+
+  /* ---- the zit: an invisible one-shot hotspot, no visual trace ---- */
+  .zit-btn{
+    position:absolute;
+    left:79%; top:28%;
+    width:15%; height:10%;
+    transform: translate(-50%, -50%);
+    background:none; border:none; padding:0; margin:0;
+    cursor:pointer;
+    -webkit-tap-highlight-color: transparent;
+    z-index:4;
+  }
+
+  .eye-stage{
+    position:relative;
+    width: min(92vw, 48vh);
+    aspect-ratio: 910 / 1618;
+    cursor:pointer;
+  }
+  .eye-stage.busy{ cursor:default; }
+
+  .eye-backer, .eye-top{
+    position:absolute; inset:0; width:100%; height:100%;
+    display:block; pointer-events:none; user-select:none;
+    -webkit-user-drag:none;
+  }
+  .eye-top{ z-index:3; }
+  .eye-backer{ z-index:1; }
+
+  .eye-content{
+    position:absolute; inset:0; z-index:2;
+    display:flex; align-items:center; justify-content:center;
+    container-type: inline-size;
+  }
+
+  .lede-text{
+    font-family: 'Monthoers', Georgia, serif;
+    font-style: italic;
+    color: var(--charcoal);
+    opacity:.75;
+    font-size: 5.2cqw;
+    text-align:center;
+    max-width: 68%;
+    line-height:1.35;
+  }
+
+  .reveal-layer{
+    position:absolute; inset:0;
+  }
+  .reveal-letter{
+    position:absolute;
+    left:50%; top:50%;
+    font-family: 'Monthoers', Georgia, serif;
+    font-weight:600;
+    color: var(--charcoal);
+    line-height:1;
+    text-align:center;
+    will-change: transform, opacity;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<button class="reset-btn" id="resetBtn" aria-label="Reset">
+  <span>RESET</span>
+</button>
+
+<div class="app">
+  <div class="eye-stage" id="eyeStage">
+    <img class="eye-backer" src="assets/eye-backer.png" alt="">
+    <div class="eye-content" id="eyeContent"></div>
+    <img class="eye-top" id="eyeTop" src="assets/eye-window-open.png" alt="">
+    <input class="type-field offering-pos" id="offeringInput" type="text"
+      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+      enterkeyhint="done" aria-label="Offering">
+    <input class="type-field question-pos" id="questionInput" type="text"
+      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+      enterkeyhint="done" aria-label="Question">
+    <button class="zit-btn" id="zitBtn" type="button" aria-label=""></button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var eyeStage = document.getElementById('eyeStage');
+  var eyeTop = document.getElementById('eyeTop');
+  var eyeContent = document.getElementById('eyeContent');
+  var resetBtn = document.getElementById('resetBtn');
+  var offeringInput = document.getElementById('offeringInput');
+  var questionInput = document.getElementById('questionInput');
+  var zitBtn = document.getElementById('zitBtn');
+
+  var EYE_GIF_SRC = 'assets/eye-window.png';
+  var EYE_OPEN_SRC = 'assets/eye-window-open.png';
+  var EYE_CLOSED_SRC = 'assets/eye-window-closed.png';
+
+  var FRAME_MS = 90, FRAME_COUNT = 13, CLOSE_AT_FRAME = 4;
+  var CLOSE_DELAY = CLOSE_AT_FRAME * FRAME_MS;      // 360ms: eye is shut, safe to swap content
+  var BLINK_TOTAL = FRAME_COUNT * FRAME_MS;          // 1170ms: full blink duration
+
+  var CLOSING_GIF_SRC = 'assets/eye-window-closing.png';
+  var OPENING_GIF_SRC = 'assets/eye-window-opening.png';
+  var CLOSING_DURATION = 5 * FRAME_MS;   // 450ms: open -> fully shut
+  var OPENING_DURATION = 7 * FRAME_MS;   // 630ms: shut -> fully open
+  var REVEAL_HOLD_MS = 2000;             // how long the eye stays shut before the reveal
+
+  // the fixed offering phrase. this is what silently plays out on screen,
+  // one character per real keystroke, while the zit is active and the
+  // operator's real typing is being captured as the secret answer instead.
+  var FILLER = 'Grant me an answer and in return I will offer you';
+
+  var DECOY_MULTIPLIER = 2; // roughly double the real letters, per spec
+
+  // ============================================================
+  // state
+  // ============================================================
+  var state = { busy:false };
+
+  function freshCapture(){
+    return { active:false, locked:false, fillerPos:0, buffer:'' };
+  }
+  var capture = freshCapture();
+
+  // ============================================================
+  // the offering field: normal typing by default. the zit flips it
+  // into capture mode, where real keystrokes are hidden in `capture.buffer`
+  // and the visible text instead advances through FILLER.
+  // ============================================================
+  function advanceFiller(){
+    if (capture.fillerPos < FILLER.length){
+      offeringInput.value += FILLER[capture.fillerPos];
+      capture.fillerPos += 1;
+    }
+    // filler exhausted: nothing further shows, but the keystroke that got
+    // us here has already been logged into capture.buffer by the caller
+  }
+
+  offeringInput.addEventListener('beforeinput', function(e){
+    if (!capture.active) return; // normal mode: let the browser do its thing
+
+    e.preventDefault();
+
+    if (e.inputType === 'insertText' || e.inputType === 'insertReplacementText' || e.inputType === 'insertFromPaste'){
+      var text = e.data || '';
+      for (var i = 0; i < text.length; i++){
+        capture.buffer += text[i];
+        advanceFiller();
+      }
+    } else if (e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward'){
+      // backspace also counts as a keystroke: it removes from the hidden
+      // answer, but the visible filler still only ever moves forward
+      capture.buffer = capture.buffer.slice(0, -1);
+      advanceFiller();
+    }
+    // anything else (line breaks, IME composition, etc.) is simply ignored
+  });
+
+  // don't let taps into either field also register as a tap on the eye
+  offeringInput.addEventListener('click', function(e){ e.stopPropagation(); });
+  questionInput.addEventListener('click', function(e){ e.stopPropagation(); });
+
+  // ============================================================
+  // the zit: a strict one-shot toggle.
+  // tap 1: enter capture mode.
+  // tap 2: exit capture mode. if anything was actually captured, the zit
+  //        locks forever. if nothing was captured, it stays live so the
+  //        operator gets another chance.
+  // ============================================================
+  zitBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    if (capture.locked) return;
+
+    if (!capture.active){
+      capture.active = true;
+      // pick up wherever the visible offering text already is, so the
+      // operator can start typing the phrase manually and trigger the
+      // zit at any point
+      capture.fillerPos = Math.min(offeringInput.value.length, FILLER.length);
+    } else {
+      capture.active = false;
+      if (capture.buffer.length > 0){
+        capture.locked = true;
+      }
+    }
+  });
+
+  // ============================================================
+  // instructions, shown inside the eye from the very start
+  // ============================================================
+  function renderInstructions(){
+    eyeContent.innerHTML = '';
+    var el = document.createElement('div');
+    el.className = 'lede-text';
+    el.innerHTML = 'Type an offering.<br>Type a question.<br>Tap the eye for your answer.';
+    eyeContent.appendChild(el);
+  }
+
+  // ============================================================
+  // letter-reveal scatter geometry -- same tuned-ellipse approach as the
+  // number trick's cloud, with a tighter minimum distance since letters
+  // take up less room than two-digit numbers and there can be a lot more
+  // of them once decoys are added in.
+  // ============================================================
+  function scatterPositionsForLetters(n){
+    var cx = 0.4984, cy = 0.5003;
+    var rx = 0.241, ry = 0.138;
+    var aspect = 1618 / 910;
+    var minDist = 0.05;
+    var pts = [];
+    for (var i = 0; i < n; i++){
+      var placed = false;
+      for (var attempt = 0; attempt < 500; attempt++){
+        var angle = Math.random() * Math.PI * 2;
+        var r = Math.sqrt(Math.random());
+        var x = cx + r * Math.cos(angle) * rx;
+        var y = cy + r * Math.sin(angle) * ry;
+        var ok = true;
+        for (var j = 0; j < pts.length; j++){
+          var dx = x - pts[j].x;
+          var dy = (y - pts[j].y) * aspect;
+          if (Math.sqrt(dx*dx + dy*dy) < minDist){ ok = false; break; }
+        }
+        if (ok){ pts.push({x:x, y:y}); placed = true; break; }
+      }
+      if (!placed) pts.push({x: cx, y: cy});
+    }
+    return pts;
+  }
+
+  function shuffledCopy(arr){
+    var copy = arr.slice();
+    for (var i = copy.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = copy[i]; copy[i] = copy[j]; copy[j] = tmp;
+    }
+    return copy;
+  }
+
+  // measures where each character of `text` would sit if laid out as a
+  // single centered line at `fontPx`, returning offsets (in px) from that
+  // line's own center. used so the real letters have an exact spot to
+  // land in, rather than a guessed grid.
+  function measureLineOffsets(text, fontPx){
+    var holder = document.createElement('div');
+    holder.style.position = 'absolute';
+    holder.style.visibility = 'hidden';
+    holder.style.whiteSpace = 'nowrap';
+    holder.style.left = '0';
+    holder.style.top = '0';
+    holder.style.fontFamily = "'Monthoers', Georgia, serif";
+    holder.style.fontWeight = '600';
+    holder.style.lineHeight = '1';
+    holder.style.fontSize = fontPx + 'px';
+    eyeContent.appendChild(holder);
+
+    var spans = [];
+    for (var i = 0; i < text.length; i++){
+      var ch = text[i];
+      var sp = document.createElement('span');
+      sp.style.display = 'inline-block';
+      sp.textContent = (ch === ' ') ? '\u00A0' : ch;
+      holder.appendChild(sp);
+      spans.push(sp);
+    }
+
+    var holderRect = holder.getBoundingClientRect();
+    var totalWidth = holderRect.width;
+    var offsets = spans.map(function(sp, i){
+      var r = sp.getBoundingClientRect();
+      var center = (r.left - holderRect.left) + r.width / 2 - totalWidth / 2;
+      return { ch: text[i], dx: center, dy: 0 };
+    });
+
+    eyeContent.removeChild(holder);
+    return { offsets: offsets, totalWidth: totalWidth };
+  }
+
+  // picks a font size that keeps the whole answer comfortably inside the
+  // eye's width, shrinking proportionally for longer answers
+  function computeRevealLayout(text){
+    var rect = eyeContent.getBoundingClientRect();
+    var baseFontPx = rect.width * 0.062;
+    var measured = measureLineOffsets(text, baseFontPx);
+    var maxAllowed = rect.width * 0.82;
+    var scale = measured.totalWidth > maxAllowed ? (maxAllowed / measured.totalWidth) : 1;
+    var fontPx = baseFontPx * scale;
+    var offsets = measured.offsets.map(function(o){
+      return { ch: o.ch, dx: o.dx * scale, dy: 0 };
+    });
+    return { fontPx: fontPx, offsets: offsets };
+  }
+
+  var ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  function randomLetter(){ return ALPHA[Math.floor(Math.random() * ALPHA.length)]; }
+
+  function spawnTile(layer, ch, scatterFrac, target, rect, fontPx, isDecoy){
+    var startX = (scatterFrac.x - 0.5) * rect.width;
+    var startY = (scatterFrac.y - 0.5) * rect.height;
+    var startRot = Math.random() * 24 - 12;
+
+    var el = document.createElement('div');
+    el.className = 'reveal-letter';
+    el.textContent = ch;
+    el.style.fontSize = fontPx + 'px';
+    var startTransform = 'translate(-50%,-50%) translate(' + startX + 'px,' + startY + 'px) rotate(' + startRot + 'deg)';
+    el.style.transform = startTransform;
+    layer.appendChild(el);
+
+    if (!isDecoy){
+      var endTransform = 'translate(-50%,-50%) translate(' + target.dx + 'px,' + target.dy + 'px) rotate(0deg)';
+      el.animate(
+        [{ transform: startTransform }, { transform: endTransform }],
+        { duration: 1500 + Math.random() * 300, easing: 'cubic-bezier(.22,.61,.36,1)', fill: 'forwards' }
+      );
+    } else {
+      // continue outward along the same direction the decoy already
+      // scattered to, well past the visible edge of the eye, fading out
+      // slowly as it goes
+      var mag = Math.sqrt(startX*startX + startY*startY);
+      var ux, uy;
+      if (mag < 1){
+        var ang = Math.random() * Math.PI * 2;
+        ux = Math.cos(ang); uy = Math.sin(ang);
+      } else {
+        ux = startX / mag; uy = startY / mag;
+      }
+      var farDist = Math.max(rect.width, rect.height) * 0.95;
+      var endX = ux * farDist, endY = uy * farDist;
+      var midX = startX + (endX - startX) * 0.55;
+      var midY = startY + (endY - startY) * 0.55;
+      var endTransform = 'translate(-50%,-50%) translate(' + endX + 'px,' + endY + 'px) rotate(' + (startRot*2) + 'deg)';
+      el.animate([
+        { transform: startTransform, opacity: 1, offset: 0 },
+        { transform: 'translate(-50%,-50%) translate(' + midX + 'px,' + midY + 'px) rotate(' + startRot + 'deg)', opacity: 1, offset: 0.55 },
+        { transform: endTransform, opacity: 0, offset: 1 }
+      ], { duration: 3200 + Math.random() * 800, easing: 'ease-in', fill: 'forwards' });
+    }
+  }
+
+  function playLetterReveal(){
+    var answer = (capture.buffer || '').trim();
+    if (!answer) answer = '\u2026'; // nothing was ever captured -- fall back rather than break
+
+    var layout = computeRevealLayout(answer.toUpperCase());
+    var realTiles = layout.offsets.filter(function(o){ return o.ch !== ' ' && o.ch !== '\u00A0'; });
+    var decoyCount = Math.max(1, Math.round(realTiles.length * DECOY_MULTIPLIER));
+
+    var positions = shuffledCopy(scatterPositionsForLetters(realTiles.length + decoyCount));
+    var rect = eyeContent.getBoundingClientRect();
+
+    var layer = document.createElement('div');
+    layer.className = 'reveal-layer';
+    eyeContent.appendChild(layer);
+
+    var idx = 0;
+    realTiles.forEach(function(tile){
+      spawnTile(layer, tile.ch, positions[idx++], { dx: tile.dx, dy: tile.dy }, rect, layout.fontPx, false);
+    });
+    for (var i = 0; i < decoyCount; i++){
+      spawnTile(layer, randomLetter(), positions[idx++], null, rect, layout.fontPx, true);
+    }
+  }
+
+  // ============================================================
+  // tap the eye: close, hold shut for 2s, open into the reveal
+  // ============================================================
+  function closeHoldOpenThenReveal(){
+    if (state.busy) return;
+    clearIdleBlink();
+    state.busy = true;
+    eyeStage.classList.add('busy');
+
+    eyeTop.src = CLOSING_GIF_SRC;
+
+    setTimeout(function(){
+      // eye is now shut -- safe to clear the instructions with nothing visible
+      eyeTop.src = EYE_CLOSED_SRC;
+      eyeContent.innerHTML = '';
+    }, CLOSING_DURATION);
+
+    setTimeout(function(){
+      eyeTop.src = OPENING_GIF_SRC;
+      playLetterReveal(); // built while still shut, animates in as the lid opens
+    }, CLOSING_DURATION + REVEAL_HOLD_MS);
+
+    setTimeout(function(){
+      eyeTop.src = EYE_OPEN_SRC;
+      eyeStage.classList.remove('busy');
+      state.busy = false;
+      // give the reveal animations (up to ~4s) room to finish before any
+      // idle blink is allowed to interrupt them
+      setTimeout(scheduleIdleBlink, 4200);
+    }, CLOSING_DURATION + REVEAL_HOLD_MS + OPENING_DURATION);
+  }
+
+  eyeStage.addEventListener('click', closeHoldOpenThenReveal);
+
+  // ============================================================
+  // ambient idle blinks -- purely cosmetic, randomized timing
+  // ============================================================
+  var idleBlinkTimer = null;
+  function clearIdleBlink(){
+    if (idleBlinkTimer){ clearTimeout(idleBlinkTimer); idleBlinkTimer = null; }
+  }
+  function scheduleIdleBlink(){
+    clearIdleBlink();
+    var delay = 2500 + Math.random() * 4000;
+    idleBlinkTimer = setTimeout(function(){
+      if (state.busy) return;
+      state.busy = true;
+      eyeStage.classList.add('busy');
+      eyeTop.src = EYE_GIF_SRC;
+      setTimeout(function(){
+        eyeTop.src = EYE_OPEN_SRC;
+        eyeStage.classList.remove('busy');
+        state.busy = false;
+        scheduleIdleBlink();
+      }, BLINK_TOTAL);
+    }, delay);
+  }
+
+  // ============================================================
+  // reset
+  // ============================================================
+  function resetAll(){
+    clearIdleBlink();
+    state.busy = true;
+    eyeStage.classList.add('busy');
+    eyeTop.src = EYE_GIF_SRC;
+
+    setTimeout(function(){
+      // eye is shut here -- swap everything back to fresh with nothing visible
+      eyeTop.src = EYE_CLOSED_SRC;
+      offeringInput.value = '';
+      questionInput.value = '';
+      capture = freshCapture();
+      renderInstructions();
+    }, CLOSE_DELAY);
+
+    setTimeout(function(){
+      eyeTop.src = EYE_OPEN_SRC;
+      eyeStage.classList.remove('busy');
+      state.busy = false;
+      scheduleIdleBlink();
+    }, BLINK_TOTAL);
+  }
+  resetBtn.addEventListener('click', resetAll);
+
+  // ============================================================
+  // init
+  // ============================================================
+  renderInstructions();
+  scheduleIdleBlink();
+})();
+</script>
+</body>
+</html>
