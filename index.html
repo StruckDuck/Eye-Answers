@@ -130,10 +130,11 @@
     font-family: 'Monthoers', Georgia, serif;
     font-weight:600;
     color: var(--charcoal);
-    font-size: 7cqw;
     line-height:1.15;
     text-align:center;
-    max-width: 80%;
+    /* font-size and max-width are set at runtime to fit the eye's actual
+       visible window, not the card's outer rectangle -- see
+       fitAnswerTextSize() */
   }
 
   @media (prefers-reduced-motion: reduce){
@@ -330,15 +331,61 @@
 
   // ============================================================
   // the reveal: just the answer itself, already formed, centered in
-  // the eye the moment it opens
+  // the eye the moment it opens -- sized and wrapped to actually fit
+  // inside the eye's visible window, not the card's outer rectangle
   // ============================================================
+
+  // finds the largest font size (allowing wrapping) whose rendered block
+  // still fits inside a conservative box sized to the eye's actual
+  // lens-shaped window -- so short answers stay big and single-line,
+  // and long ones wrap to two or three lines instead of shrinking to
+  // the smallest possible size
+  function fitAnswerTextSize(text, containerRect){
+    var maxWidthPx = containerRect.width * 0.40;
+    var maxHeightPx = containerRect.height * 0.20;
+    var maxFontPx = containerRect.width * 0.075;
+    var minFontPx = containerRect.width * 0.032;
+    var steps = 14;
+
+    var holder = document.createElement('div');
+    holder.style.position = 'absolute';
+    holder.style.visibility = 'hidden';
+    holder.style.left = '0';
+    holder.style.top = '0';
+    holder.style.width = maxWidthPx + 'px';
+    holder.style.fontFamily = "'Monthoers', Georgia, serif";
+    holder.style.fontWeight = '600';
+    holder.style.lineHeight = '1.15';
+    holder.style.textAlign = 'center';
+    holder.textContent = text;
+    eyeContent.appendChild(holder);
+
+    var chosen = minFontPx;
+    for (var i = 0; i <= steps; i++){
+      var fontPx = maxFontPx - (i / steps) * (maxFontPx - minFontPx);
+      holder.style.fontSize = fontPx + 'px';
+      if (holder.getBoundingClientRect().height <= maxHeightPx){
+        chosen = fontPx;
+        break;
+      }
+    }
+
+    eyeContent.removeChild(holder);
+    return { fontPx: chosen, maxWidthPx: maxWidthPx };
+  }
+
   function playAnswerReveal(){
     var answer = (capture.buffer || '').trim();
     if (!answer) answer = nextFailurePhrase(); // nothing was ever captured
 
+    var text = answer.toUpperCase();
+    var fit = fitAnswerTextSize(text, eyeContent.getBoundingClientRect());
+
     var el = document.createElement('div');
     el.className = 'reveal-answer';
-    el.textContent = answer.toUpperCase();
+    el.style.fontSize = fit.fontPx + 'px';
+    el.style.maxWidth = fit.maxWidthPx + 'px';
+    el.textContent = text;
     eyeContent.appendChild(el);
   }
 
