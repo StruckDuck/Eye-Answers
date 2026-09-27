@@ -95,6 +95,102 @@
     z-index:6;
   }
 
+  /* ---- public pull-tab + its fake instructions panel ---- */
+  .pull-tab{
+    position:fixed;
+    top:0; left:50%;
+    transform: translateX(-50%);
+    width:64px; height:26px;
+    background: var(--ink);
+    border:none;
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.35);
+    color:#EAE1C8;
+    font-size:1rem;
+    line-height:1;
+    cursor:pointer;
+    z-index:60;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .info-panel{
+    position:absolute; inset:0;
+    z-index:10;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 14% 12%;
+    background: #D0D0D1;
+    container-type: inline-size;
+    transform: translateY(-105%);
+    transition: transform .35s ease;
+    pointer-events:none;
+  }
+  .info-panel.open{
+    transform: translateY(0);
+    pointer-events:auto;
+  }
+  .info-text{
+    margin:0;
+    font-family: 'Monthoers', Georgia, serif;
+    font-style:italic;
+    color: var(--charcoal);
+    text-align:center;
+    font-size: 5.4cqw;
+    line-height:1.4;
+  }
+
+  /* ---- secret backstage instructions ---- */
+  .secret-overlay{
+    position:fixed; inset:0;
+    background: rgba(20,24,23,.72);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    z-index:100;
+    opacity:0;
+    pointer-events:none;
+    transition: opacity .2s ease;
+  }
+  .secret-overlay.open{
+    opacity:1;
+    pointer-events:auto;
+  }
+  .secret-panel{
+    position:relative;
+    width:100%; max-width:420px;
+    max-height:80vh;
+    overflow-y:auto;
+    background: var(--ink);
+    color:#EAE1C8;
+    border-radius:10px;
+    padding:30px 22px 22px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    box-shadow: 0 10px 40px rgba(0,0,0,.5);
+  }
+  .secret-panel h2{
+    margin:0 0 14px;
+    font-size:1.05rem;
+    font-weight:600;
+    color:#fff;
+  }
+  .secret-panel ol{
+    margin:0; padding-left:1.2em;
+    font-size:.92rem;
+    line-height:1.5;
+  }
+  .secret-panel li{ margin-bottom:.6em; }
+  .secret-panel li:last-child{ margin-bottom:0; }
+  .secret-close{
+    position:absolute; top:8px; right:10px;
+    background:none; border:none;
+    color:#EAE1C8; font-size:1.5rem; line-height:1;
+    padding:6px 10px;
+    cursor:pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   .eye-stage{
     position:relative;
     width: min(92vw, 48vh);
@@ -150,6 +246,10 @@
   <span>RESET</span>
 </button>
 
+<button class="pull-tab" id="pullTab" type="button" aria-label="Instructions">
+  <span aria-hidden="true">&#9662;</span>
+</button>
+
 <div class="app">
   <div class="eye-stage" id="eyeStage">
     <img class="eye-backer" src="assets/eye-backer.png" alt="">
@@ -162,6 +262,24 @@
       autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"
       enterkeyhint="done" aria-label="Question"></textarea>
     <button class="zit-btn" id="zitBtn" type="button" tabindex="-1" aria-label=""></button>
+    <div class="info-panel" id="infoPanel">
+      <p class="info-text">I see all. Past, present, and future.<br>
+      Trinkets and hollow words do not move me.<br>
+      Name a worthy gift, then ask your question, and I shall answer true.</p>
+    </div>
+  </div>
+</div>
+
+<div class="secret-overlay" id="secretOverlay">
+  <div class="secret-panel">
+    <button class="secret-close" id="secretClose" type="button" aria-label="Close">&times;</button>
+    <h2>How this actually works</h2>
+    <ol>
+      <li>Before typing your offering, tap the zit (above and to the right of the eye).</li>
+      <li>Type the answer to the question that will be asked. The offering phrase will spell itself out automatically while you're actually typing the answer.</li>
+      <li>When you're done entering the answer, tap the zit again, then finish the phrase by naming an actual item to offer.</li>
+      <li>Enter the question below the eye and poke it. The eye will reveal whatever you secretly typed.</li>
+    </ol>
   </div>
 </div>
 
@@ -176,6 +294,10 @@
   var offeringInput = document.getElementById('offeringInput');
   var questionInput = document.getElementById('questionInput');
   var zitBtn = document.getElementById('zitBtn');
+  var pullTab = document.getElementById('pullTab');
+  var infoPanel = document.getElementById('infoPanel');
+  var secretOverlay = document.getElementById('secretOverlay');
+  var secretClose = document.getElementById('secretClose');
 
   var EYE_GIF_SRC = 'assets/eye-window.png';
   var EYE_OPEN_SRC = 'assets/eye-window-open.png';
@@ -292,11 +414,12 @@
     eyeContent.appendChild(el);
   }
 
-  // shown instead of an answer when nothing was ever secretly captured --
-  // cycles through in order, remembering its place across reloads via
-  // localStorage (falls back to an in-memory counter if storage isn't
-  // available, e.g. private browsing)
-  var FAILURE_PHRASES = [
+  // shown instead of an answer when nothing was ever secretly captured.
+  // which list is used depends on how much effort the typed-out offering
+  // shows (by word count); each list cycles independently, in order,
+  // remembering its place across reloads via localStorage (falls back to
+  // an in-memory counter per list if storage isn't available)
+  var FAILURE_PHRASES_FULL = [
     'Such trifles insult me.',
     'A paltry offering shames you.',
     'Too meager to buy my silence.',
@@ -308,27 +431,48 @@
     'Your offering insults me.',
     "A coward's offering buys silence."
   ];
-  var FAILURE_INDEX_KEY = 'peterEyeFailureIndex';
-  var failureIndexFallback = 0; // used only if localStorage is unavailable
+  var FAILURE_PHRASES_THIN = [
+    'You call that an offering? Your meager effort insults me.',
+    'You call a few words a gift? Offer more.',
+    'Is that truly the whole of your effort?',
+    'You rushed your offering. I noticed.',
+    'Such carelessness will not buy an answer.',
+    'An offering demands effort. Yours had none.',
+    'You barely tried, and it shows.',
+    'Half an effort earns half an answer, which is none.',
+    'Your offering carries no weight, only haste.',
+    'You spoke without care, and I heard it.'
+  ];
+  var THIN_OFFERING_WORD_LIMIT = 6; // offerings shorter than this count as thin
 
-  function nextFailurePhrase(){
-    var i = 0;
-    try {
-      var stored = window.localStorage.getItem(FAILURE_INDEX_KEY);
-      i = stored === null ? 0 : parseInt(stored, 10);
-      if (isNaN(i)) i = 0;
-    } catch (e){
-      i = failureIndexFallback;
-    }
-    i = ((i % FAILURE_PHRASES.length) + FAILURE_PHRASES.length) % FAILURE_PHRASES.length;
-    var phrase = FAILURE_PHRASES[i];
-    var next = (i + 1) % FAILURE_PHRASES.length;
-    try {
-      window.localStorage.setItem(FAILURE_INDEX_KEY, String(next));
-    } catch (e){
-      failureIndexFallback = next;
-    }
-    return phrase;
+  function makePhraseCycler(list, storageKey){
+    var fallback = 0;
+    return function(){
+      var i = 0;
+      try {
+        var stored = window.localStorage.getItem(storageKey);
+        i = stored === null ? 0 : parseInt(stored, 10);
+        if (isNaN(i)) i = 0;
+      } catch (e){
+        i = fallback;
+      }
+      i = ((i % list.length) + list.length) % list.length;
+      var phrase = list[i];
+      var next = (i + 1) % list.length;
+      try {
+        window.localStorage.setItem(storageKey, String(next));
+      } catch (e){
+        fallback = next;
+      }
+      return phrase;
+    };
+  }
+
+  var nextFullFailurePhrase = makePhraseCycler(FAILURE_PHRASES_FULL, 'peterEyeFailureIndexFull');
+  var nextThinFailurePhrase = makePhraseCycler(FAILURE_PHRASES_THIN, 'peterEyeFailureIndexThin');
+
+  function offeringWordCount(){
+    return offeringInput.value.trim().split(/\s+/).filter(Boolean).length;
   }
 
   // ============================================================
@@ -378,7 +522,11 @@
 
   function playAnswerReveal(){
     var answer = (capture.buffer || '').trim();
-    if (!answer) answer = nextFailurePhrase(); // nothing was ever captured
+    if (!answer){
+      answer = (offeringWordCount() >= THIN_OFFERING_WORD_LIMIT)
+        ? nextFullFailurePhrase()
+        : nextThinFailurePhrase();
+    }
 
     var text = answer;
     var fit = fitAnswerTextSize(text, eyeContent.getBoundingClientRect());
@@ -462,7 +610,10 @@
     }, BLINK_TOTAL);
   }
 
+  var suppressNextEyeTap = false;
+
   function handleEyeTap(){
+    if (suppressNextEyeTap){ suppressNextEyeTap = false; return; }
     if (state.busy) return;
     if (state.revealed){
       clearIdleBlink();
@@ -472,6 +623,61 @@
     closeHoldOpenThenReveal();
   }
   eyeStage.addEventListener('click', handleEyeTap);
+
+  // ============================================================
+  // public pull-tab -- fake, in-character instructions, toggled open
+  // and closed by tapping the tab itself
+  // ============================================================
+  pullTab.addEventListener('click', function(e){
+    e.stopPropagation();
+    infoPanel.classList.toggle('open');
+  });
+  // a tap landing on the panel (covering the eye while open) should never
+  // leak through to the eye's own tap handler underneath
+  infoPanel.addEventListener('click', function(e){ e.stopPropagation(); });
+
+  // ============================================================
+  // secret backstage instructions -- opened by a two-finger swipe down,
+  // only when it starts over the eye card itself
+  // ============================================================
+  function openSecretPanel(){ secretOverlay.classList.add('open'); }
+  function closeSecretPanel(){ secretOverlay.classList.remove('open'); }
+
+  secretClose.addEventListener('click', function(e){
+    e.stopPropagation();
+    closeSecretPanel();
+  });
+  secretOverlay.addEventListener('click', function(e){
+    if (e.target === secretOverlay) closeSecretPanel(); // tap on the backdrop, not the panel
+  });
+
+  var twoFingerStartY = null;
+  var twoFingerFired = false;
+  var TWO_FINGER_THRESHOLD_PX = 70;
+
+  eyeStage.addEventListener('touchstart', function(e){
+    if (e.touches.length === 2){
+      twoFingerStartY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      twoFingerFired = false;
+    } else {
+      twoFingerStartY = null;
+    }
+  }, { passive:true });
+
+  eyeStage.addEventListener('touchmove', function(e){
+    if (e.touches.length === 2 && twoFingerStartY !== null && !twoFingerFired){
+      var currentY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      if (currentY - twoFingerStartY > TWO_FINGER_THRESHOLD_PX){
+        twoFingerFired = true;
+        suppressNextEyeTap = true; // in case a stray click follows the gesture
+        openSecretPanel();
+      }
+    }
+  }, { passive:true });
+
+  eyeStage.addEventListener('touchend', function(e){
+    if (e.touches.length < 2) twoFingerStartY = null;
+  });
 
   // ============================================================
   // ambient idle blinks -- purely cosmetic, randomized timing
