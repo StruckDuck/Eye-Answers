@@ -95,49 +95,52 @@
     z-index:6;
   }
 
-  /* ---- public pull-tab + its fake instructions panel ---- */
-  .pull-tab{
+  /* ---- public instructions drawer: tab + panel move as one piece ---- */
+  .instructions-drawer{
     position:fixed;
-    top:0; left:50%;
-    transform: translateX(-50%);
-    width:64px; height:26px;
-    background: var(--ink);
-    border:none;
-    border-radius: 0 0 10px 10px;
-    box-shadow: 0 2px 6px rgba(0,0,0,.35);
-    color:#EAE1C8;
-    font-size:1rem;
-    line-height:1;
-    cursor:pointer;
+    top:0; left:0;
+    width:100%;
     z-index:60;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .info-panel{
-    position:absolute; inset:0;
-    z-index:10;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding: 14% 12%;
-    background: #D0D0D1;
-    container-type: inline-size;
-    transform: translateY(-105%);
+    transform: translateY(calc(-1 * var(--panel-h, 260px)));
     transition: transform .35s ease;
-    pointer-events:none;
   }
-  .info-panel.open{
+  .instructions-drawer.open{
     transform: translateY(0);
-    pointer-events:auto;
   }
-  .info-text{
+  .instructions-panel{
+    box-sizing:border-box;
+    width:100%;
+    background:#C2B595;
+    border:3px solid #000;
+    box-shadow: 0 4px 10px rgba(0,0,0,.35);
+    padding: 22px 10% 26px;
+  }
+  .instructions-text{
     margin:0;
     font-family: 'Monthoers', Georgia, serif;
     font-style:italic;
     color: var(--charcoal);
     text-align:center;
-    font-size: 5.4cqw;
-    line-height:1.4;
+    font-size: 1.25rem;
+    line-height:1.5;
+  }
+  .instructions-tab{
+    display:block;
+    margin-left: 8%;
+    background:#C2B595;
+    border:3px solid #000;
+    border-top:none;
+    border-radius: 0 0 10px 10px;
+    padding: 6px 16px 8px;
+    cursor:pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .instructions-tab span{
+    font-family: 'Monthoers', Georgia, serif;
+    font-weight:600;
+    color:#000;
+    font-size:1rem;
+    letter-spacing:.02em;
   }
 
   /* ---- secret backstage instructions ---- */
@@ -246,9 +249,16 @@
   <span>RESET</span>
 </button>
 
-<button class="pull-tab" id="pullTab" type="button" aria-label="Instructions">
-  <span aria-hidden="true">&#9662;</span>
-</button>
+<div class="instructions-drawer" id="instructionsDrawer">
+  <div class="instructions-panel">
+    <p class="instructions-text">I see all. Past, present, and future.<br>
+    Trinkets and hollow words do not move me.<br>
+    Name a worthy gift, then ask your question, and I shall answer true.</p>
+  </div>
+  <button class="instructions-tab" id="instructionsTab" type="button" aria-label="Instructions">
+    <span>INSTRUCTIONS</span>
+  </button>
+</div>
 
 <div class="app">
   <div class="eye-stage" id="eyeStage">
@@ -262,11 +272,6 @@
       autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"
       enterkeyhint="done" aria-label="Question"></textarea>
     <button class="zit-btn" id="zitBtn" type="button" tabindex="-1" aria-label=""></button>
-    <div class="info-panel" id="infoPanel">
-      <p class="info-text">I see all. Past, present, and future.<br>
-      Trinkets and hollow words do not move me.<br>
-      Name a worthy gift, then ask your question, and I shall answer true.</p>
-    </div>
   </div>
 </div>
 
@@ -294,8 +299,8 @@
   var offeringInput = document.getElementById('offeringInput');
   var questionInput = document.getElementById('questionInput');
   var zitBtn = document.getElementById('zitBtn');
-  var pullTab = document.getElementById('pullTab');
-  var infoPanel = document.getElementById('infoPanel');
+  var instructionsDrawer = document.getElementById('instructionsDrawer');
+  var instructionsTab = document.getElementById('instructionsTab');
   var secretOverlay = document.getElementById('secretOverlay');
   var secretClose = document.getElementById('secretClose');
 
@@ -625,16 +630,28 @@
   eyeStage.addEventListener('click', handleEyeTap);
 
   // ============================================================
-  // public pull-tab -- fake, in-character instructions, toggled open
-  // and closed by tapping the tab itself
+  // public instructions drawer -- fake, in-character copy. the tab is
+  // physically attached to the panel's bottom edge, so closed just means
+  // the drawer is shifted up by exactly the panel's own height, leaving
+  // only the tab visible; open means shifted back to rest
   // ============================================================
-  pullTab.addEventListener('click', function(e){
-    e.stopPropagation();
-    infoPanel.classList.toggle('open');
+  var instructionsPanel = instructionsDrawer.querySelector('.instructions-panel');
+
+  function measureInstructionsPanel(){
+    var h = instructionsPanel.getBoundingClientRect().height;
+    if (h > 0){
+      instructionsDrawer.style.setProperty('--panel-h', h + 'px');
+    }
+  }
+  if (document.fonts && document.fonts.ready){
+    document.fonts.ready.then(measureInstructionsPanel);
+  }
+  measureInstructionsPanel(); // sensible value immediately, refined once fonts settle
+  window.addEventListener('resize', measureInstructionsPanel);
+
+  instructionsTab.addEventListener('click', function(){
+    instructionsDrawer.classList.toggle('open');
   });
-  // a tap landing on the panel (covering the eye while open) should never
-  // leak through to the eye's own tap handler underneath
-  infoPanel.addEventListener('click', function(e){ e.stopPropagation(); });
 
   // ============================================================
   // secret backstage instructions -- opened by a two-finger swipe down,
