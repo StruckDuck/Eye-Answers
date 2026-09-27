@@ -192,7 +192,7 @@
   // the fixed offering phrase. this is what silently plays out on screen,
   // one character per real keystroke, while the zit is active and the
   // operator's real typing is being captured as the secret answer instead.
-  var FILLER = 'Grant me an answer and in return I will offer you';
+  var FILLER = 'Please answer my question and in return I will offer you';
 
 
   // ============================================================
@@ -289,13 +289,52 @@
     eyeContent.appendChild(el);
   }
 
+  // shown instead of an answer when nothing was ever secretly captured --
+  // cycles through in order, remembering its place across reloads via
+  // localStorage (falls back to an in-memory counter if storage isn't
+  // available, e.g. private browsing)
+  var FAILURE_PHRASES = [
+    'Such trifles insult me.',
+    'A paltry offering shames you.',
+    'Too meager to buy my silence.',
+    'So scant an offering insults me.',
+    'Unworthy offerings earn nothing.',
+    'A lesser offering shames the asker.',
+    'Such meager tribute insults me.',
+    'Too slight an offering to buy my answer.',
+    'Your offering insults me.',
+    "A coward's offering buys silence."
+  ];
+  var FAILURE_INDEX_KEY = 'peterEyeFailureIndex';
+  var failureIndexFallback = 0; // used only if localStorage is unavailable
+
+  function nextFailurePhrase(){
+    var i = 0;
+    try {
+      var stored = window.localStorage.getItem(FAILURE_INDEX_KEY);
+      i = stored === null ? 0 : parseInt(stored, 10);
+      if (isNaN(i)) i = 0;
+    } catch (e){
+      i = failureIndexFallback;
+    }
+    i = ((i % FAILURE_PHRASES.length) + FAILURE_PHRASES.length) % FAILURE_PHRASES.length;
+    var phrase = FAILURE_PHRASES[i];
+    var next = (i + 1) % FAILURE_PHRASES.length;
+    try {
+      window.localStorage.setItem(FAILURE_INDEX_KEY, String(next));
+    } catch (e){
+      failureIndexFallback = next;
+    }
+    return phrase;
+  }
+
   // ============================================================
   // the reveal: just the answer itself, already formed, centered in
   // the eye the moment it opens
   // ============================================================
   function playAnswerReveal(){
     var answer = (capture.buffer || '').trim();
-    if (!answer) answer = '\u2026'; // nothing was ever captured -- fall back rather than break
+    if (!answer) answer = nextFailurePhrase(); // nothing was ever captured
 
     var el = document.createElement('div');
     el.className = 'reveal-answer';
