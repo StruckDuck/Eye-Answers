@@ -53,7 +53,7 @@
     color: #EAE1C8;
   }
 
-  /* ---- offering / question fields, sitting where YES/NO used to live ---- */
+  /* ---- the question field, sitting where YES/NO used to live ---- */
   .type-field{
     position:absolute;
     left:50%;
@@ -79,8 +79,7 @@
   }
   .type-field::placeholder{ color: rgba(42,38,32,.35); }
   .type-field:focus{ box-shadow: 0 0 0 2px rgba(201,169,110,.55); }
-  .offering-pos{ top: 16%; }
-  .question-pos{ top: 84%; }
+  .question-pos{ top: 16%; }
 
   /* ---- the zit: an invisible one-shot hotspot, no visual trace ---- */
   .zit-btn{
@@ -202,6 +201,12 @@
   }
   .eye-stage.busy{ cursor:default; }
 
+  .eye-look{
+    position:absolute; inset:0; z-index:1;
+    transition: transform .11s ease-out;
+    will-change: transform;
+  }
+
   .eye-backer, .eye-top{
     position:absolute; inset:0; width:100%; height:100%;
     display:block; pointer-events:none; user-select:none;
@@ -251,9 +256,8 @@
 
 <div class="instructions-drawer" id="instructionsDrawer">
   <div class="instructions-panel">
-    <p class="instructions-text">I see all. Past, present, and future.<br>
-    Trinkets and hollow words do not move me.<br>
-    Name a worthy gift, then ask your question, and I shall answer true.</p>
+    <p class="instructions-text">Ask the eye a question,<br>
+    Poke the eye for your answer.</p>
   </div>
   <button class="instructions-tab" id="instructionsTab" type="button" aria-label="Instructions">
     <span>INSTRUCTIONS</span>
@@ -262,12 +266,11 @@
 
 <div class="app">
   <div class="eye-stage" id="eyeStage">
-    <img class="eye-backer" src="assets/eye-backer.png" alt="">
-    <div class="eye-content" id="eyeContent"></div>
+    <div class="eye-look" id="eyeLook">
+      <img class="eye-backer" src="assets/eye-backer.png" alt="">
+      <div class="eye-content" id="eyeContent"></div>
+    </div>
     <img class="eye-top" id="eyeTop" src="assets/eye-window-open.png" alt="">
-    <textarea class="type-field offering-pos" id="offeringInput" rows="2" placeholder="Offering"
-      autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"
-      enterkeyhint="done" aria-label="Offering"></textarea>
     <textarea class="type-field question-pos" id="questionInput" rows="2" placeholder="Question"
       autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"
       enterkeyhint="done" aria-label="Question"></textarea>
@@ -280,10 +283,10 @@
     <button class="secret-close" id="secretClose" type="button" aria-label="Close">&times;</button>
     <h2>How this actually works</h2>
     <ol>
-      <li>Before typing your offering, tap the zit (above and to the right of the eye).</li>
-      <li>Type the answer to the question that will be asked. The offering phrase will spell itself out automatically while you're actually typing the answer.</li>
-      <li>When you're done entering the answer, tap the zit again, then finish the phrase by naming an actual item to offer.</li>
-      <li>Enter the question below the eye and poke it. The eye will reveal whatever you secretly typed.</li>
+      <li>Before typing, tap the zit (above and to the right of the eye).</li>
+      <li>Type the secret answer. "Can you guess what" will spell itself out on screen automatically while you're actually typing the real answer underneath.</li>
+      <li>When you're done typing the answer, tap the zit again to lock it in.</li>
+      <li>Finish the sentence however you like, normally, then poke the eye. It will reveal whatever you secretly typed as the answer.</li>
     </ol>
   </div>
 </div>
@@ -294,9 +297,9 @@
 
   var eyeStage = document.getElementById('eyeStage');
   var eyeTop = document.getElementById('eyeTop');
+  var eyeLook = document.getElementById('eyeLook');
   var eyeContent = document.getElementById('eyeContent');
   var resetBtn = document.getElementById('resetBtn');
-  var offeringInput = document.getElementById('offeringInput');
   var questionInput = document.getElementById('questionInput');
   var zitBtn = document.getElementById('zitBtn');
   var instructionsDrawer = document.getElementById('instructionsDrawer');
@@ -319,10 +322,13 @@
   var REVEAL_HOLD_MS = 5000;             // how long the eye stays shut before the reveal
   var CONCENTRATE_FLICKER_MS = 3 * FRAME_MS; // ~270ms per swap while "concentrating"
 
-  // the fixed offering phrase. this is what silently plays out on screen,
+  // the fixed filler phrase. this is what silently plays out on screen,
   // one character per real keystroke, while the zit is active and the
   // operator's real typing is being captured as the secret answer instead.
-  var FILLER = 'Please answer my question and in return I will offer you';
+  // once the zit is tapped a second time, capture mode ends and whatever
+  // the operator types from then on appears normally, appended after this,
+  // finishing the question however they like in the moment.
+  var FILLER = 'Can you guess what';
 
 
   // ============================================================
@@ -336,20 +342,20 @@
   var capture = freshCapture();
 
   // ============================================================
-  // the offering field: normal typing by default. the zit flips it
+  // the question field: normal typing by default. the zit flips it
   // into capture mode, where real keystrokes are hidden in `capture.buffer`
   // and the visible text instead advances through FILLER.
   // ============================================================
   function advanceFiller(){
     if (capture.fillerPos < FILLER.length){
-      offeringInput.value += FILLER[capture.fillerPos];
+      questionInput.value += FILLER[capture.fillerPos];
       capture.fillerPos += 1;
     }
     // filler exhausted: nothing further shows, but the keystroke that got
     // us here has already been logged into capture.buffer by the caller
   }
 
-  offeringInput.addEventListener('beforeinput', function(e){
+  questionInput.addEventListener('beforeinput', function(e){
     if (!capture.active) return; // normal mode: let the browser do its thing
 
     e.preventDefault();
@@ -369,8 +375,7 @@
     // anything else (line breaks, IME composition, etc.) is simply ignored
   });
 
-  // don't let taps into either field also register as a tap on the eye
-  offeringInput.addEventListener('click', function(e){ e.stopPropagation(); });
+  // don't let a tap into the field also register as a tap on the eye
   questionInput.addEventListener('click', function(e){ e.stopPropagation(); });
 
   // ============================================================
@@ -396,10 +401,10 @@
 
     if (!capture.active){
       capture.active = true;
-      // pick up wherever the visible offering text already is, so the
+      // pick up wherever the visible question text already is, so the
       // operator can start typing the phrase manually and trigger the
       // zit at any point
-      capture.fillerPos = Math.min(offeringInput.value.length, FILLER.length);
+      capture.fillerPos = Math.min(questionInput.value.length, FILLER.length);
     } else {
       capture.active = false;
       if (capture.buffer.length > 0){
@@ -415,40 +420,40 @@
     eyeContent.innerHTML = '';
     var el = document.createElement('div');
     el.className = 'lede-text';
-    el.innerHTML = 'Type an offering.<br>Type a question.<br>Poke the eye for your answer.';
+    el.innerHTML = 'Ask the eye a question.<br>Poke the eye for your answer.';
     eyeContent.appendChild(el);
   }
 
   // shown instead of an answer when nothing was ever secretly captured.
-  // which list is used depends on how much effort the typed-out offering
+  // which list is used depends on how much effort the typed-out question
   // shows (by word count); each list cycles independently, in order,
   // remembering its place across reloads via localStorage (falls back to
   // an in-memory counter per list if storage isn't available)
   var FAILURE_PHRASES_FULL = [
-    'Such trifles insult me.',
-    'A paltry offering shames you.',
-    'Too meager to buy my silence.',
-    'So scant an offering insults me.',
-    'Unworthy offerings earn nothing.',
-    'A lesser offering shames the asker.',
-    'Such meager tribute insults me.',
-    'Too slight an offering to buy my answer.',
-    'Your offering insults me.',
-    "A coward's offering buys silence."
+    'Such a question deserves no answer.',
+    'I see no truth worth answering here.',
+    'That question holds no weight.',
+    'You ask, but you do not truly wish to know.',
+    'Empty words earn empty silence.',
+    'A hollow question meets a hollow eye.',
+    'I will not answer what you do not mean.',
+    'Your question rings false.',
+    'There is nothing here worth revealing.',
+    "A careless question buys nothing."
   ];
   var FAILURE_PHRASES_THIN = [
-    'You call that an offering? Your meager effort insults me.',
-    'You call a few words a gift? Offer more.',
-    'Is that truly the whole of your effort?',
-    'You rushed your offering. I noticed.',
-    'Such carelessness will not buy an answer.',
-    'An offering demands effort. Yours had none.',
+    'You call that a question? Ask again, and mean it.',
+    'Too few words to carry truth.',
+    'Is that truly all you wished to ask?',
+    'You rushed your question. I noticed.',
+    'Such haste earns silence.',
+    'A question demands thought. Yours had none.',
     'You barely tried, and it shows.',
-    'Half an effort earns half an answer, which is none.',
-    'Your offering carries no weight, only haste.',
+    'Half a question earns half an answer, which is none.',
+    'Your question carries no weight, only haste.',
     'You spoke without care, and I heard it.'
   ];
-  var THIN_OFFERING_WORD_LIMIT = 6; // offerings shorter than this count as thin
+  var THIN_QUESTION_WORD_LIMIT = 6; // questions shorter than this count as thin
 
   function makePhraseCycler(list, storageKey){
     var fallback = 0;
@@ -476,8 +481,8 @@
   var nextFullFailurePhrase = makePhraseCycler(FAILURE_PHRASES_FULL, 'peterEyeFailureIndexFull');
   var nextThinFailurePhrase = makePhraseCycler(FAILURE_PHRASES_THIN, 'peterEyeFailureIndexThin');
 
-  function offeringWordCount(){
-    return offeringInput.value.trim().split(/\s+/).filter(Boolean).length;
+  function questionWordCount(){
+    return questionInput.value.trim().split(/\s+/).filter(Boolean).length;
   }
 
   // ============================================================
@@ -528,7 +533,7 @@
   function playAnswerReveal(){
     var answer = (capture.buffer || '').trim();
     if (!answer){
-      answer = (offeringWordCount() >= THIN_OFFERING_WORD_LIMIT)
+      answer = (questionWordCount() >= THIN_QUESTION_WORD_LIMIT)
         ? nextFullFailurePhrase()
         : nextThinFailurePhrase();
     }
@@ -572,6 +577,7 @@
   function closeHoldOpenThenReveal(){
     if (state.busy) return;
     clearIdleBlink();
+    resetSaccade();
     state.busy = true;
     eyeStage.classList.add('busy');
 
@@ -594,8 +600,9 @@
       eyeTop.src = EYE_OPEN_SRC;
       eyeStage.classList.remove('busy');
       state.busy = false;
-      // brief pause so the reveal registers before ambient blinking resumes
+      // brief pause so the reveal registers before ambient motion resumes
       setTimeout(scheduleIdleBlink, 1500);
+      setTimeout(scheduleSaccade, 1500);
     }, CLOSING_DURATION + REVEAL_HOLD_MS + OPENING_DURATION);
   }
 
@@ -713,6 +720,47 @@
   }
 
   // ============================================================
+  // saccades -- small, controlled shifts of the eye's visible contents
+  // (the sclera window and whatever text sits on it), giving the eye a
+  // watchful, slightly anxious quality rather than a calm, static stare.
+  // more frequent than an idle blink, and a bit more pronounced than a
+  // true micro-saccade, but always a quick, deliberate snap to one of a
+  // handful of gaze positions and a hold there -- never a drift or a
+  // twitch. purely cosmetic; paused whenever the eye is mid-animation.
+  // ============================================================
+  var SACCADE_MIN_DELAY_MS = 650;
+  var SACCADE_MAX_DELAY_MS = 1500;
+  var SACCADE_OFFSETS = [
+    { x:  0, y:  0 },
+    { x: -5, y: -3 },
+    { x:  5, y: -3 },
+    { x: -6, y:  2 },
+    { x:  6, y:  2 },
+    { x: -3, y:  5 },
+    { x:  3, y:  5 },
+    { x:  0, y: -5 }
+  ]; // percentages of eye-stage size
+
+  var saccadeTimer = null;
+  function clearSaccade(){
+    if (saccadeTimer){ clearTimeout(saccadeTimer); saccadeTimer = null; }
+  }
+  function resetSaccade(){
+    clearSaccade();
+    eyeLook.style.transform = 'translate(0%, 0%)';
+  }
+  function scheduleSaccade(){
+    clearSaccade();
+    var delay = SACCADE_MIN_DELAY_MS + Math.random() * (SACCADE_MAX_DELAY_MS - SACCADE_MIN_DELAY_MS);
+    saccadeTimer = setTimeout(function(){
+      if (state.busy){ scheduleSaccade(); return; }
+      var o = SACCADE_OFFSETS[Math.floor(Math.random() * SACCADE_OFFSETS.length)];
+      eyeLook.style.transform = 'translate(' + o.x + '%, ' + o.y + '%)';
+      scheduleSaccade();
+    }, delay);
+  }
+
+  // ============================================================
   // reset -- same closing/hold/opening pattern as the reveal, just with
   // a brief hold instead of a dramatic one, so it actually plays the
   // reopening animation instead of jumping straight to the open frame
@@ -722,6 +770,7 @@
   function resetAll(){
     clearIdleBlink();
     clearConcentrateFlicker();
+    resetSaccade();
     state.busy = true;
     eyeStage.classList.add('busy');
 
@@ -730,7 +779,6 @@
     setTimeout(function(){
       // eye is shut here -- swap everything back to fresh with nothing visible
       eyeTop.src = EYE_CLOSED_SRC;
-      offeringInput.value = '';
       questionInput.value = '';
       capture = freshCapture();
       state.revealed = false;
@@ -746,6 +794,7 @@
       eyeStage.classList.remove('busy');
       state.busy = false;
       scheduleIdleBlink();
+      scheduleSaccade();
     }, CLOSING_DURATION + RESET_HOLD_MS + OPENING_DURATION);
   }
   resetBtn.addEventListener('click', resetAll);
@@ -755,6 +804,7 @@
   // ============================================================
   renderInstructions();
   scheduleIdleBlink();
+  scheduleSaccade();
 })();
 </script>
 </body>
