@@ -201,35 +201,27 @@
   }
   .eye-stage.busy{ cursor:default; }
 
+  /* the pupil sits in its own mover layer so saccades shift only it --
+     the sclera behind it and any reveal text in front of it stay put */
   .eye-look{
-    position:absolute; inset:0; z-index:1;
+    position:absolute; inset:0; z-index:2;
     transition: transform .11s ease-out;
     will-change: transform;
   }
 
-  .eye-backer, .eye-top{
+  .eye-backer, .eye-pupil, .eye-top{
     position:absolute; inset:0; width:100%; height:100%;
     display:block; pointer-events:none; user-select:none;
     -webkit-user-drag:none;
   }
-  .eye-top{ z-index:3; }
+  .eye-top{ z-index:4; }
   .eye-backer{ z-index:1; }
+  .eye-pupil{ z-index:2; }
 
   .eye-content{
-    position:absolute; inset:0; z-index:2;
+    position:absolute; inset:0; z-index:3;
     display:flex; align-items:center; justify-content:center;
     container-type: inline-size;
-  }
-
-  .lede-text{
-    font-family: 'Monthoers', Georgia, serif;
-    font-style: italic;
-    color: var(--charcoal);
-    opacity:.75;
-    font-size: 5.2cqw;
-    text-align:center;
-    max-width: 68%;
-    line-height:1.35;
   }
 
   .reveal-answer{
@@ -266,10 +258,11 @@
 
 <div class="app">
   <div class="eye-stage" id="eyeStage">
+    <img class="eye-backer" src="assets/eye-backer.png" alt="">
     <div class="eye-look" id="eyeLook">
-      <img class="eye-backer" src="assets/eye-backer.png" alt="">
-      <div class="eye-content" id="eyeContent"></div>
+      <img class="eye-pupil" id="eyePupil" src="assets/pupil.png" alt="">
     </div>
+    <div class="eye-content" id="eyeContent"></div>
     <img class="eye-top" id="eyeTop" src="assets/eye-window-open.png" alt="">
     <textarea class="type-field question-pos" id="questionInput" rows="2" placeholder="Question"
       autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"
@@ -298,6 +291,7 @@
   var eyeStage = document.getElementById('eyeStage');
   var eyeTop = document.getElementById('eyeTop');
   var eyeLook = document.getElementById('eyeLook');
+  var eyePupil = document.getElementById('eyePupil');
   var eyeContent = document.getElementById('eyeContent');
   var resetBtn = document.getElementById('resetBtn');
   var questionInput = document.getElementById('questionInput');
@@ -414,14 +408,16 @@
   });
 
   // ============================================================
-  // instructions, shown inside the eye from the very start
+  // resting state: the pupil sits in the eye from the very start (and
+  // again after reset), with nothing in eyeContent. it's hidden for the
+  // reveal and stays hidden once an answer is showing.
   // ============================================================
-  function renderInstructions(){
+  function showPupil(){
     eyeContent.innerHTML = '';
-    var el = document.createElement('div');
-    el.className = 'lede-text';
-    el.innerHTML = 'Ask the eye a question.<br>Poke the eye for your answer.';
-    eyeContent.appendChild(el);
+    eyePupil.style.visibility = 'visible';
+  }
+  function hidePupil(){
+    eyePupil.style.visibility = 'hidden';
   }
 
   // shown instead of an answer when nothing was ever secretly captured.
@@ -584,7 +580,8 @@
     eyeTop.src = CLOSING_GIF_SRC;
 
     setTimeout(function(){
-      // eye is now shut -- safe to clear the instructions with nothing visible
+      // eye is now shut -- safe to swap the pupil out for nothing visible
+      hidePupil();
       eyeContent.innerHTML = '';
       playConcentrateFlicker(REVEAL_HOLD_MS, CONCENTRATE_FLICKER_MS);
     }, CLOSING_DURATION);
@@ -782,7 +779,7 @@
       questionInput.value = '';
       capture = freshCapture();
       state.revealed = false;
-      renderInstructions();
+      showPupil();
     }, CLOSING_DURATION);
 
     setTimeout(function(){
@@ -802,7 +799,7 @@
   // ============================================================
   // init
   // ============================================================
-  renderInstructions();
+  showPupil();
   scheduleIdleBlink();
   scheduleSaccade();
 })();
