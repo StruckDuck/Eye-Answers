@@ -47,13 +47,14 @@
     position:fixed; top:16px; right:16px; z-index:50;
     background:none; border:none; cursor:pointer;
     padding:8px 10px;
-    opacity:.75; transition: opacity .2s ease;
+    opacity:.9; transition: opacity .2s ease;
   }
   .reset-btn:hover{ opacity:1; }
   .reset-btn span{
     font-family: 'Monthoers', Georgia, serif;
     font-size: 1.725rem;
-    color: #EAE1C8;
+    color: #24170f;
+    text-shadow: 0 0 3px rgba(234,225,200,.9), 0 0 6px rgba(234,225,200,.7);
   }
 
   /* ---- the question field, sitting where YES/NO used to live ---- */
@@ -323,7 +324,7 @@
     <img class="eye-art" src="assets/eye-bg.webp?v=4" alt="">
     <canvas class="eye-lid" id="eyeLid" width="760" height="728"></canvas>
     <img class="textbox-art" src="assets/textbox.png?v=4" alt="">
-    <textarea class="type-field question-pos" id="questionInput" rows="2" placeholder="Question"
+    <textarea class="type-field question-pos" id="questionInput" rows="2" enterkeyhint="done" placeholder="Question"
       autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"
       enterkeyhint="done" aria-label="Question"></textarea>
     <button class="zit-btn" id="zitBtn" type="button" tabindex="-1" aria-label=""></button>
@@ -415,7 +416,17 @@
     // us here has already been logged into capture.buffer by the caller
   }
 
+  // the enter / done key never makes a new line: it just closes the keyboard
+  // and leaves the field. (some Android keyboards skip keydown, so the
+  // line-break input event is caught as well)
+  questionInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter'){ e.preventDefault(); questionInput.blur(); }
+  });
+
   questionInput.addEventListener('beforeinput', function(e){
+    if (e.inputType === 'insertLineBreak' || e.inputType === 'insertParagraph'){
+      e.preventDefault(); questionInput.blur(); return;
+    }
     if (!capture.active) return; // normal mode: let the browser do its thing
 
     e.preventDefault();
@@ -543,8 +554,8 @@
   var nextFullFailurePhrase = makePhraseCycler(FAILURE_PHRASES_FULL, 'peterEyeFailureIndexFull');
   var nextThinFailurePhrase = makePhraseCycler(FAILURE_PHRASES_THIN, 'peterEyeFailureIndexThin');
 
-  function questionWordCount(){
-    return questionInput.value.trim().split(/\s+/).filter(Boolean).length;
+  function wordCount(str){
+    return str.trim().split(/\s+/).filter(Boolean).length;
   }
 
   // ============================================================
@@ -592,10 +603,13 @@
     return { fontPx: chosen, maxWidthPx: maxWidthPx };
   }
 
-  function playAnswerReveal(){
-    var answer = (capture.buffer || '').trim();
+  // asked = { secret, words } taken at the moment of the poke, because the
+  // field and the secret entry are cleared right then so a new question can
+  // be started as soon as the answer is up
+  function playAnswerReveal(asked){
+    var answer = (asked.secret || '').trim();
     if (!answer){
-      answer = (questionWordCount() >= THIN_QUESTION_WORD_LIMIT)
+      answer = (asked.words >= THIN_QUESTION_WORD_LIMIT)
         ? nextFullFailurePhrase()
         : nextThinFailurePhrase();
     }
@@ -739,6 +753,13 @@
     eyeStage.classList.add('busy');
     var my = runId;
 
+    // keep what the reveal needs, then clear the field and the secret entry
+    // right away so the next question can be typed immediately
+    var asked = { secret: capture.buffer, words: wordCount(questionInput.value) };
+    questionInput.value = '';
+    capture = freshCapture();
+    if (document.activeElement === questionInput) questionInput.blur();
+
     // the pupil goes away on the exact frame the lid covers it
     if (!(await playRange(OPEN_FRAME, CLOSED_A, function(i){
       if (i === CLOSED_A) hidePupil();
@@ -749,7 +770,7 @@
     if (!(await concentrate(REVEAL_HOLD_MS))) return;
     state.holding = false;
 
-    playAnswerReveal(); // built while still shut, sitting there the instant the lid opens
+    playAnswerReveal(asked); // built while still shut, sitting there the instant the lid opens
     state.revealed = true;
     if (!(await playRange(CLOSED_B + 1, LAST_FRAME))) return;
 
