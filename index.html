@@ -31,13 +31,16 @@
     -webkit-tap-highlight-color: transparent;
   }
   body{
-    display:flex; align-items:center; justify-content:center;
-    min-height:100vh; overflow:hidden;
+    overflow:hidden;
   }
 
+  /* the art fills the whole screen: scaled to cover, centered, and cropped
+     at whichever pair of edges overflows (sides on tall phones, top and
+     bottom on shorter ones). everything inside is positioned in percent of
+     the stage, so it all scales and crops together */
   .app{
-    display:flex; flex-direction:column; align-items:center;
-    gap: 14px; width: 100%; padding: 24px 16px;
+    position:fixed; inset:0;
+    overflow:hidden;
   }
 
   .reset-btn{
@@ -55,90 +58,105 @@
 
   /* ---- the question field, sitting where YES/NO used to live ---- */
   .type-field{
+    /* the opening in the frame is lumpy: only y 236 to 316 (of the 1618px
+       canvas) is clear everywhere. the field is exactly two lines tall and
+       centered on that band, so text never touches the rope, and a third
+       line scrolls the field by one whole line */
+    --fs: max(16px, calc(var(--stage-w) * 0.038)); /* 16px min: iOS zooms on focus below that */
+    --lh: calc(var(--fs) * 1.15);
     position:absolute;
-    left:50%;
-    background: #D0D0D1; /* same grey as the sclera / pupil-text */
-    border: 1px solid rgba(42,38,32,.18);
-    border-radius: 8px;
-    padding: 6px 10px;
-    width: 82%;
-    height: 3.2em;
+    left:21.98%; width:57.69%;
+    top: calc(17.06% - var(--lh));
+    height: calc(var(--lh) * 2);
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0 calc(var(--stage-w) * 0.008);
+    margin: 0;
     resize: none;
     overflow: hidden;
-    transform: translate(-50%, -50%);
     font-family: 'Monthoers', Georgia, serif;
-    font-size: clamp(0.95rem, 4.2vw, 1.4rem);
-    line-height: 1.3;
+    font-size: var(--fs);
+    line-height: var(--lh);
     color: var(--charcoal);
     text-align:left;
     outline:none;
-    caret-color: var(--focus);
-    box-shadow: 0 0 0 0 rgba(201,169,110,0);
-    transition: box-shadow .15s ease;
-    z-index:5;
+    caret-color: #7a4a2a;
+    z-index:6;
   }
-  .type-field::placeholder{ color: rgba(42,38,32,.35); }
-  .type-field:focus{ box-shadow: 0 0 0 2px rgba(201,169,110,.55); }
-  .question-pos{ top: 16%; }
+  .type-field::placeholder{ color: rgba(42,38,32,.4); }
 
   /* ---- the zit: an invisible one-shot hotspot, no visual trace ---- */
   .zit-btn{
     position:absolute;
-    left:83.5%; top:27.6%;
+    left:79.6%; top:30.4%;
     width:20%; height:11.5%;
     transform: translate(-50%, -50%);
     background:none; border:none; padding:0; margin:0;
     cursor:pointer;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
-    z-index:6;
+    z-index:7;
   }
 
-  /* ---- public instructions drawer: tab + panel move as one piece ---- */
+  /* ---- public instructions drawer: one piece of art (panel + tab bump).
+     closed = slid up until only the tab bump shows. all sizes are fractions
+     of the drawer's own width so it scales with the art ---- */
   .instructions-drawer{
+    --drawer-w: min(100vw, var(--stage-w));
+    --cream: #F6EBD0;
     position:fixed;
-    top:0; left:0;
-    width:100%;
+    top:0; left:0; right:0;
+    margin:0 auto;
+    width: var(--drawer-w);
+    aspect-ratio: 910 / 466;
     z-index:60;
-    transform: translateY(calc(-1 * var(--panel-h, 260px)));
+    pointer-events:none;
+    transform: translateY(-77.7%);
     transition: transform .35s ease;
   }
   .instructions-drawer.open{
     transform: translateY(0);
+    pointer-events:auto;
   }
-  .instructions-panel{
-    box-sizing:border-box;
-    width:100%;
-    background:#C2B595;
-    border:3px solid #000;
-    box-shadow: 0 4px 10px rgba(0,0,0,.35);
-    padding: 22px 10% 26px;
+  .drawer-art{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    display:block;
+    user-select:none; -webkit-user-drag:none;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,.35));
   }
   .instructions-text{
+    position:absolute;
+    left:0; right:0;
+    top: env(safe-area-inset-top, 0px);
+    height: calc(64.4% - env(safe-area-inset-top, 0px));
     margin:0;
+    padding: 0 10%;
+    display:flex; align-items:center; justify-content:center;
     font-family: 'Monthoers', Georgia, serif;
-    font-style:italic;
-    color: var(--charcoal);
+    color: var(--cream);
+    text-shadow: 0 1px 0 rgba(40,15,10,.7);
     text-align:center;
-    font-size: 1.25rem;
-    line-height:1.5;
+    font-size: calc(var(--drawer-w) * 0.05);
+    line-height:1.35;
   }
   .instructions-tab{
-    display:block;
-    margin-left: 8%;
-    background:#C2B595;
-    border:3px solid #000;
-    border-top:none;
-    border-radius: 0 0 10px 10px;
-    padding: 6px 16px 8px;
+    position:absolute;
+    left:6%; width:31%;
+    top:77.7%; height:22.3%;
+    display:flex; align-items:center; justify-content:center;
+    background:none; border:none; padding:0;
     cursor:pointer;
+    pointer-events:auto;
     -webkit-tap-highlight-color: transparent;
   }
   .instructions-tab span{
     font-family: 'Monthoers', Georgia, serif;
     font-weight:600;
-    color:#000;
-    font-size:1rem;
+    color: var(--cream);
+    text-shadow: 0 1px 0 rgba(40,15,10,.7);
+    font-size: max(12px, calc(var(--drawer-w) * 0.036));
     letter-spacing:.02em;
   }
 
@@ -193,13 +211,39 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* the art is scaled to cover the screen (--stage-w). tablets and desktop
+     fit the full art instead, since filling would crop the eye and push the
+     field and zit off-screen */
+  :root{ --stage-w: max(100vw, calc(100vh * 910 / 1618)); }
+  @supports (height: 100dvh){
+    :root{ --stage-w: max(100vw, calc(100dvh * 910 / 1618)); }
+  }
+  @media (min-aspect-ratio: 7/10){
+    :root{ --stage-w: calc(100vh * 910 / 1618); }
+    @supports (height: 100dvh){
+      :root{ --stage-w: calc(100dvh * 910 / 1618); }
+    }
+  }
+
   .eye-stage{
-    position:relative;
-    width: min(92vw, 48vh);
+    position:absolute;
+    left:50%; top:50%;
+    width: var(--stage-w);
     aspect-ratio: 910 / 1618;
+    transform: translate(-50%, -50%);
     cursor:pointer;
   }
-  .eye-stage.busy{ cursor:default; }
+
+  /* the carved-out box the question is typed into, drawn as art; the real
+     textarea sits transparently over its grey interior */
+  .textbox-art{
+    position:absolute;
+    left:14.18%; top:11.19%;
+    width:72.42%; height:auto;
+    display:block; pointer-events:none; user-select:none;
+    -webkit-user-drag:none;
+    z-index:5;
+  }
 
   /* the pupil sits in its own mover layer so saccades shift only it --
      the sclera behind it and any reveal text in front of it stay put */
@@ -247,10 +291,9 @@
 </button>
 
 <div class="instructions-drawer" id="instructionsDrawer">
-  <div class="instructions-panel">
-    <p class="instructions-text">Ask the eye a question,<br>
-    Poke the eye for your answer.</p>
-  </div>
+  <img class="drawer-art" src="assets/drawer.png" alt="">
+  <p class="instructions-text">Ask the eye a question,<br>
+  Poke the eye for your answer.</p>
   <button class="instructions-tab" id="instructionsTab" type="button" aria-label="Instructions">
     <span>INSTRUCTIONS</span>
   </button>
@@ -264,6 +307,7 @@
     </div>
     <div class="eye-content" id="eyeContent"></div>
     <img class="eye-top" id="eyeTop" src="assets/eye-window-open.png" alt="">
+    <img class="textbox-art" src="assets/textbox.png" alt="">
     <textarea class="type-field question-pos" id="questionInput" rows="2" placeholder="Question"
       autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"
       enterkeyhint="done" aria-label="Question"></textarea>
@@ -303,8 +347,8 @@
 
   var EYE_GIF_SRC = 'assets/eye-window.png';
   var EYE_OPEN_SRC = 'assets/eye-window-open.png';
-  var EYE_CLOSED_SRC = 'assets/eye-window-closed.png';        // wiggly/zigzag shut
-  var EYE_CLOSED_SMOOTH_SRC = 'assets/eye-window-closed-smooth.png'; // straight/smooth shut
+  var EYE_CLOSED_SRC = 'assets/eye-window-closed.png';        // shape the closing strip ends on
+  var EYE_CLOSED_SMOOTH_SRC = 'assets/eye-window-closed-smooth.png'; // shape the opening strip starts from
 
   var FRAME_MS = 90, FRAME_COUNT = 13;
   var BLINK_TOTAL = FRAME_COUNT * FRAME_MS;          // 1170ms: full blink duration
@@ -562,7 +606,7 @@
       elapsed += intervalMs;
       if (elapsed >= totalMs){
         clearConcentrateFlicker();
-        eyeTop.src = EYE_CLOSED_SRC; // always land on wiggly, whatever the parity
+        eyeTop.src = EYE_CLOSED_SMOOTH_SRC; // always land on the shape the opening strip starts from
         return;
       }
       onWiggly = !onWiggly;
@@ -639,20 +683,6 @@
   // the drawer is shifted up by exactly the panel's own height, leaving
   // only the tab visible; open means shifted back to rest
   // ============================================================
-  var instructionsPanel = instructionsDrawer.querySelector('.instructions-panel');
-
-  function measureInstructionsPanel(){
-    var h = instructionsPanel.getBoundingClientRect().height;
-    if (h > 0){
-      instructionsDrawer.style.setProperty('--panel-h', h + 'px');
-    }
-  }
-  if (document.fonts && document.fonts.ready){
-    document.fonts.ready.then(measureInstructionsPanel);
-  }
-  measureInstructionsPanel(); // sensible value immediately, refined once fonts settle
-  window.addEventListener('resize', measureInstructionsPanel);
-
   instructionsTab.addEventListener('click', function(){
     instructionsDrawer.classList.toggle('open');
   });
