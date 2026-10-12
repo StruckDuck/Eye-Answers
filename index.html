@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>The Eye</title>
-<link rel="icon" type="image/png" href="assets/icon.png?v=4">
-<link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=4">
+<link rel="icon" type="image/png" href="assets/icon.png?v=6">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=6">
 <meta property="og:title" content="The Eye">
 <meta property="og:type" content="website">
 <meta property="og:image" content="assets/link-preview.png">
@@ -796,7 +796,11 @@
   function handleEyeTap(){
     if (suppressNextEyeTap){ suppressNextEyeTap = false; return; }
     if (state.busy || !ready) return;
-    if (state.revealed){
+    // a poke only counts as a question once something has been entered;
+    // otherwise it is just a normal blink. the full reveal also runs right
+    // after a previous one, so no RESET is needed between questions
+    var entered = questionInput.value.trim() !== '' || (capture.buffer || '').trim() !== '';
+    if (!entered){
       clearIdleBlink();
       playQuickBlink(scheduleIdleBlink);
       return;
