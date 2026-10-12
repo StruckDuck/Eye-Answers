@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>The Eye</title>
-<link rel="icon" type="image/png" href="assets/icon.png">
-<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="assets/icon.png?v=4">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=4">
 <meta property="og:title" content="The Eye">
 <meta property="og:type" content="website">
 <meta property="og:image" content="assets/link-preview.png">
@@ -14,7 +14,7 @@
 <style>
   @font-face{
     font-family: 'Monthoers';
-    src: url('assets/monthoers.ttf') format('truetype');
+    src: url('assets/monthoers.ttf?v=4') format('truetype');
     font-display: swap;
   }
   :root{
@@ -232,7 +232,10 @@
     aspect-ratio: 910 / 1618;
     transform: translate(-50%, -50%);
     cursor:pointer;
+    opacity:0;
+    transition: opacity .4s ease;
   }
+  .eye-stage.ready{ opacity:1; }
 
   /* the carved-out box the question is typed into, drawn as art; the real
      textarea sits transparently over its grey interior */
@@ -253,14 +256,25 @@
     will-change: transform;
   }
 
-  .eye-backer, .eye-pupil, .eye-top{
+  .eye-backer, .eye-pupil, .eye-art{
     position:absolute; inset:0; width:100%; height:100%;
     display:block; pointer-events:none; user-select:none;
     -webkit-user-drag:none;
   }
-  .eye-top{ z-index:4; }
+  .eye-art{ z-index:4; }
   .eye-backer{ z-index:1; }
   .eye-pupil{ z-index:2; }
+
+  /* only the patch of the art around the lid ever changes, so it is painted
+     on a small canvas over the static background. canvas is 760x728 of the
+     910x1618 art, at (86, 452) */
+  .eye-lid{
+    position:absolute;
+    left:9.451%; top:27.936%;
+    width:83.516%; height:auto; aspect-ratio:760/728;
+    display:block; pointer-events:none;
+    z-index:4;
+  }
 
   .eye-content{
     position:absolute; inset:0; z-index:3;
@@ -291,7 +305,7 @@
 </button>
 
 <div class="instructions-drawer" id="instructionsDrawer">
-  <img class="drawer-art" src="assets/drawer.png" alt="">
+  <img class="drawer-art" src="assets/drawer.png?v=4" alt="">
   <p class="instructions-text">Ask the eye a question,<br>
   Poke the eye for your answer.</p>
   <button class="instructions-tab" id="instructionsTab" type="button" aria-label="Instructions">
@@ -301,13 +315,14 @@
 
 <div class="app">
   <div class="eye-stage" id="eyeStage">
-    <img class="eye-backer" src="assets/eye-backer.png" alt="">
+    <img class="eye-backer" src="assets/eye-backer.png?v=4" alt="">
     <div class="eye-look" id="eyeLook">
-      <img class="eye-pupil" id="eyePupil" src="assets/pupil.png" alt="">
+      <img class="eye-pupil" id="eyePupil" src="assets/pupil.png?v=4" alt="">
     </div>
     <div class="eye-content" id="eyeContent"></div>
-    <img class="eye-top" id="eyeTop" src="assets/eye-window-open.png" alt="">
-    <img class="textbox-art" src="assets/textbox.png" alt="">
+    <img class="eye-art" src="assets/eye-bg.webp?v=4" alt="">
+    <canvas class="eye-lid" id="eyeLid" width="760" height="728"></canvas>
+    <img class="textbox-art" src="assets/textbox.png?v=4" alt="">
     <textarea class="type-field question-pos" id="questionInput" rows="2" placeholder="Question"
       autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"
       enterkeyhint="done" aria-label="Question"></textarea>
@@ -333,7 +348,8 @@
   "use strict";
 
   var eyeStage = document.getElementById('eyeStage');
-  var eyeTop = document.getElementById('eyeTop');
+  var eyeLid = document.getElementById('eyeLid');
+  var lidCtx = eyeLid.getContext('2d');
   var eyeLook = document.getElementById('eyeLook');
   var eyePupil = document.getElementById('eyePupil');
   var eyeContent = document.getElementById('eyeContent');
@@ -345,19 +361,25 @@
   var secretOverlay = document.getElementById('secretOverlay');
   var secretClose = document.getElementById('secretClose');
 
-  var EYE_GIF_SRC = 'assets/eye-window.png';
-  var EYE_OPEN_SRC = 'assets/eye-window-open.png';
-  var EYE_CLOSED_SRC = 'assets/eye-window-closed.png';        // shape the closing strip ends on
-  var EYE_CLOSED_SMOOTH_SRC = 'assets/eye-window-closed-smooth.png'; // shape the opening strip starts from
+  // bump this whenever any image changes, so browsers fetch the new files
+  // instead of showing cached old ones
+  var ASSET_V = '4';
+  var LID_W = 760, LID_H = 728;
 
-  var FRAME_MS = 90, FRAME_COUNT = 13;
-  var BLINK_TOTAL = FRAME_COUNT * FRAME_MS;          // 1170ms: full blink duration
-
-  var CLOSING_GIF_SRC = 'assets/eye-window-closing.png';
-  var OPENING_GIF_SRC = 'assets/eye-window-opening.png';
-  var CLOSING_DURATION = 5 * FRAME_MS;   // 450ms: open -> fully shut
-  var OPENING_DURATION = 7 * FRAME_MS;   // 630ms: shut -> fully open
-  var REVEAL_HOLD_MS = 5000;             // how long the eye stays shut before the reveal
+  // ------------------------------------------------------------
+  // the eye is played from preloaded frames: a static full-screen
+  // background plus a small canvas that paints only the patch around the
+  // lid. every step of every animation is driven by the frames
+  // themselves, never by guessing when an image file has arrived.
+  // ------------------------------------------------------------
+  var FRAME_MS = 90;
+  var OPEN_FRAME = 0;     // resting pose
+  var CLOSED_A = 4;       // the closing run ends here, fully shut
+  var CLOSED_B = 5;       // second shut shape; the opening run picks up after it
+  var LAST_FRAME = 11;    // last frame of a blink or opening; matches the resting pose
+  // frame number -> file number. frame 6 is identical to frame 5 and reuses its file
+  var FRAME_FILES = [0, 1, 2, 3, 4, 5, 5, 7, 8, 9, 10, 11];
+  var REVEAL_HOLD_MS = 5000;                 // how long the eye stays shut before the reveal
   var CONCENTRATE_FLICKER_MS = 3 * FRAME_MS; // ~270ms per swap while "concentrating"
 
   // the fixed filler phrase. this is what silently plays out on screen,
@@ -372,7 +394,7 @@
   // ============================================================
   // state
   // ============================================================
-  var state = { busy:false, revealed:false };
+  var state = { busy:false, revealed:false, holding:false };
 
   function freshCapture(){
     return { active:false, locked:false, fillerPos:0, buffer:'' };
@@ -590,84 +612,169 @@
   }
 
   // ============================================================
-  // tap the eye: close, "concentrate" (flicker between the wiggly and
-  // smooth shut shapes) for REVEAL_HOLD_MS, open into the reveal
+  // frame loading and playback
   // ============================================================
-  var concentrateTimer = null;
-  function clearConcentrateFlicker(){
-    if (concentrateTimer){ clearInterval(concentrateTimer); concentrateTimer = null; }
-  }
-  function playConcentrateFlicker(totalMs, intervalMs){
-    clearConcentrateFlicker();
-    var elapsed = 0;
-    var onWiggly = true; // closing animation already ends on the wiggly shape
-    eyeTop.src = EYE_CLOSED_SRC;
-    concentrateTimer = setInterval(function(){
-      elapsed += intervalMs;
-      if (elapsed >= totalMs){
-        clearConcentrateFlicker();
-        eyeTop.src = EYE_CLOSED_SMOOTH_SRC; // always land on the shape the opening strip starts from
-        return;
-      }
-      onWiggly = !onWiggly;
-      eyeTop.src = onWiggly ? EYE_CLOSED_SRC : EYE_CLOSED_SMOOTH_SRC;
-    }, intervalMs);
+  var frames = [];
+  var ready = false;
+  var runId = 0; // bumped by reset, so a half-finished sequence stops quietly
+
+  function pad2(n){ return n < 10 ? '0' + n : '' + n; }
+
+  function loadImage(url){
+    return new Promise(function(resolve){
+      var img = new Image();
+      img.onload = function(){
+        if (window.createImageBitmap){
+          // decoded once, kept as raw pixels, so drawing never waits on a decode
+          createImageBitmap(img).then(resolve, function(){ resolve(img); });
+        } else {
+          resolve(img);
+        }
+      };
+      img.onerror = function(){ resolve(null); };
+      img.src = url + '?v=' + ASSET_V;
+    });
   }
 
-  function closeHoldOpenThenReveal(){
-    if (state.busy) return;
+  function loadAllFrames(){
+    var byFile = {};
+    FRAME_FILES.forEach(function(file){
+      if (!(file in byFile)) byFile[file] = loadImage('assets/eye/f' + pad2(file) + '.webp');
+    });
+    var files = Object.keys(byFile);
+    return Promise.all(files.map(function(f){ return byFile[f]; })).then(function(list){
+      var loaded = {};
+      files.forEach(function(f, i){ loaded[f] = list[i]; });
+      FRAME_FILES.forEach(function(file, i){ frames[i] = loaded[file]; });
+    });
+  }
+
+  function drawFrame(i){
+    var f = frames[i];
+    if (!f) return;
+    lastDrawn = i;
+    lidCtx.clearRect(0, 0, eyeLid.width, eyeLid.height);
+    if (eyeLid.width === f.width) lidCtx.drawImage(f, 0, 0);
+    else lidCtx.drawImage(f, 0, 0, eyeLid.width, eyeLid.height);
+  }
+
+  // canvas backing store matches what is actually shown on screen, so the
+  // browser does one clean downscale instead of two
+  var lastDrawn = -1;
+  function sizeLid(){
+    var cw = eyeLid.clientWidth;
+    if (!cw) return;
+    var dpr = window.devicePixelRatio || 1;
+    var w = Math.min(LID_W, Math.max(1, Math.round(cw * dpr)));
+    var h = Math.round(w * LID_H / LID_W);
+    if (w === eyeLid.width && h === eyeLid.height) return;
+    eyeLid.width = w; eyeLid.height = h;
+    lidCtx.imageSmoothingEnabled = true;
+    lidCtx.imageSmoothingQuality = 'high';
+    if (lastDrawn >= 0) drawFrame(lastDrawn);
+  }
+  window.addEventListener('resize', sizeLid);
+  window.addEventListener('orientationchange', sizeLid);
+
+  // plays frames from..to (inclusive) at FRAME_MS each. resolves true when
+  // done, false if a reset interrupted it. onFrame(i) fires as each frame appears.
+  function playRange(from, to, onFrame){
+    var my = runId;
+    return new Promise(function(resolve){
+      var n = Math.abs(to - from) + 1;
+      var dir = to >= from ? 1 : -1;
+      var start = null, shown = -1;
+      function step(now){
+        if (my !== runId){ resolve(false); return; }
+        if (start === null) start = now;
+        var k = Math.floor((now - start) / FRAME_MS);
+        if (k >= n){ resolve(true); return; }
+        if (k !== shown){
+          shown = k;
+          drawFrame(from + dir * k);
+          if (onFrame) onFrame(from + dir * k);
+        }
+        requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
+  function wait(ms){
+    var my = runId;
+    return new Promise(function(resolve){
+      setTimeout(function(){ resolve(my === runId); }, ms);
+    });
+  }
+
+  // ============================================================
+  // tap the eye: close, "concentrate" (flicker between the two shut
+  // shapes) for REVEAL_HOLD_MS, open into the reveal
+  // ============================================================
+  async function concentrate(totalMs){
+    var elapsed = 0, onA = true;
+    drawFrame(CLOSED_A);
+    while (elapsed + CONCENTRATE_FLICKER_MS < totalMs){
+      if (!(await wait(CONCENTRATE_FLICKER_MS))) return false;
+      elapsed += CONCENTRATE_FLICKER_MS;
+      onA = !onA;
+      drawFrame(onA ? CLOSED_A : CLOSED_B);
+    }
+    if (!(await wait(totalMs - elapsed))) return false;
+    drawFrame(CLOSED_B); // always land on the shape the opening run follows
+    return true;
+  }
+
+  function finishSequence(){
+    drawFrame(OPEN_FRAME);
+    eyeStage.classList.remove('busy');
+    state.busy = false;
+  }
+
+  async function closeHoldOpenThenReveal(){
+    if (state.busy || !ready) return;
     clearIdleBlink();
     resetSaccade();
     state.busy = true;
     eyeStage.classList.add('busy');
+    var my = runId;
 
-    eyeTop.src = CLOSING_GIF_SRC;
+    // the pupil goes away on the exact frame the lid covers it
+    if (!(await playRange(OPEN_FRAME, CLOSED_A, function(i){
+      if (i === CLOSED_A) hidePupil();
+    }))) return;
 
-    setTimeout(function(){
-      // eye is now shut -- safe to swap the pupil out for nothing visible
-      hidePupil();
-      eyeContent.innerHTML = '';
-      playConcentrateFlicker(REVEAL_HOLD_MS, CONCENTRATE_FLICKER_MS);
-    }, CLOSING_DURATION);
+    eyeContent.innerHTML = '';
+    state.holding = true;
+    if (!(await concentrate(REVEAL_HOLD_MS))) return;
+    state.holding = false;
 
-    setTimeout(function(){
-      clearConcentrateFlicker();
-      eyeTop.src = OPENING_GIF_SRC;
-      playAnswerReveal(); // built while still shut, sitting there the instant the lid opens
-      state.revealed = true;
-    }, CLOSING_DURATION + REVEAL_HOLD_MS);
+    playAnswerReveal(); // built while still shut, sitting there the instant the lid opens
+    state.revealed = true;
+    if (!(await playRange(CLOSED_B + 1, LAST_FRAME))) return;
 
-    setTimeout(function(){
-      eyeTop.src = EYE_OPEN_SRC;
-      eyeStage.classList.remove('busy');
-      state.busy = false;
-      // brief pause so the reveal registers before ambient motion resumes
-      setTimeout(scheduleIdleBlink, 1500);
-      setTimeout(scheduleSaccade, 1500);
-    }, CLOSING_DURATION + REVEAL_HOLD_MS + OPENING_DURATION);
+    finishSequence();
+    // brief pause so the reveal registers before ambient motion resumes
+    setTimeout(function(){ if (my === runId){ scheduleIdleBlink(); scheduleSaccade(); } }, 1500);
   }
 
   // a plain blink, reused for both ambient idle blinks and for taps on
   // the eye once the answer is already showing -- eyeContent is left
   // completely alone, so the answer just gets briefly covered and
   // uncovered like a real eyelid passing over it
-  function playQuickBlink(onDone){
+  async function playQuickBlink(onDone){
     state.busy = true;
     eyeStage.classList.add('busy');
-    eyeTop.src = EYE_GIF_SRC;
-    setTimeout(function(){
-      eyeTop.src = EYE_OPEN_SRC;
-      eyeStage.classList.remove('busy');
-      state.busy = false;
-      if (onDone) onDone();
-    }, BLINK_TOTAL);
+    if (!(await playRange(OPEN_FRAME, LAST_FRAME))) return;
+    finishSequence();
+    if (onDone) onDone();
   }
 
   var suppressNextEyeTap = false;
 
   function handleEyeTap(){
     if (suppressNextEyeTap){ suppressNextEyeTap = false; return; }
-    if (state.busy) return;
+    if (state.busy || !ready) return;
     if (state.revealed){
       clearIdleBlink();
       playQuickBlink(scheduleIdleBlink);
@@ -789,49 +896,64 @@
 
   // ============================================================
   // reset -- same closing/hold/opening pattern as the reveal, just with
-  // a brief hold instead of a dramatic one, so it actually plays the
-  // reopening animation instead of jumping straight to the open frame
+  // a brief hold instead of a dramatic one. works mid-hold too, but is
+  // ignored during the short blink and opening runs
   // ============================================================
   var RESET_HOLD_MS = 300;
 
-  function resetAll(){
+  async function resetAll(){
+    if (!ready) return;
+    if (state.busy && !state.holding) return;
+    var alreadyShut = state.holding;
+    var my = ++runId;
     clearIdleBlink();
-    clearConcentrateFlicker();
     resetSaccade();
     state.busy = true;
+    state.holding = false;
     eyeStage.classList.add('busy');
 
-    eyeTop.src = CLOSING_GIF_SRC;
+    if (!alreadyShut){
+      if (!(await playRange(OPEN_FRAME, CLOSED_A))) return;
+    }
+    // eye is shut here -- swap everything back to fresh with nothing visible
+    drawFrame(CLOSED_A);
+    questionInput.value = '';
+    capture = freshCapture();
+    state.revealed = false;
+    showPupil();
 
-    setTimeout(function(){
-      // eye is shut here -- swap everything back to fresh with nothing visible
-      eyeTop.src = EYE_CLOSED_SRC;
-      questionInput.value = '';
-      capture = freshCapture();
-      state.revealed = false;
-      showPupil();
-    }, CLOSING_DURATION);
+    if (!(await wait(RESET_HOLD_MS))) return;
+    drawFrame(CLOSED_B);
+    if (!(await playRange(CLOSED_B + 1, LAST_FRAME))) return;
 
-    setTimeout(function(){
-      eyeTop.src = OPENING_GIF_SRC;
-    }, CLOSING_DURATION + RESET_HOLD_MS);
-
-    setTimeout(function(){
-      eyeTop.src = EYE_OPEN_SRC;
-      eyeStage.classList.remove('busy');
-      state.busy = false;
-      scheduleIdleBlink();
-      scheduleSaccade();
-    }, CLOSING_DURATION + RESET_HOLD_MS + OPENING_DURATION);
+    finishSequence();
+    if (my === runId){ scheduleIdleBlink(); scheduleSaccade(); }
   }
   resetBtn.addEventListener('click', resetAll);
 
   // ============================================================
-  // init
+  // init: nothing is shown or pokeable until every image is in
   // ============================================================
-  showPupil();
-  scheduleIdleBlink();
-  scheduleSaccade();
+  var started = false;
+  function start(){
+    if (started) return;
+    started = true;
+    sizeLid();
+    drawFrame(OPEN_FRAME);
+    showPupil();
+    ready = true;
+    eyeStage.classList.add('ready');
+    scheduleIdleBlink();
+    scheduleSaccade();
+  }
+  Promise.all([
+    loadAllFrames(),
+    loadImage('assets/eye-bg.webp'),
+    loadImage('assets/eye-backer.png'),
+    loadImage('assets/pupil.png'),
+    loadImage('assets/textbox.png')
+  ]).then(start, start);
+  setTimeout(start, 10000); // never stay blank if something hangs
 })();
 </script>
 </body>
