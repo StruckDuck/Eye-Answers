@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>The Eye Knows All</title>
 <meta name="apple-mobile-web-app-title" content="The Eye Knows All">
+<meta name="copyright" content="&copy; 2026 Joshua Stacy. All rights reserved.">
 <meta name="application-name" content="The Eye Knows All">
 <link rel="icon" type="image/png" href="assets/icon.png?v=6">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=6">
@@ -54,6 +55,17 @@
     opacity:.9; transition: opacity .2s ease;
   }
   .reset-btn:hover{ opacity:1; }
+
+  /* copyright line: tiny, centered at the very bottom, never catches a touch */
+  .site-copyright{
+    position:fixed; left:0; right:0; z-index:5;
+    bottom:calc(env(safe-area-inset-bottom, 0px) + 8px);
+    text-align:center; pointer-events:none; user-select:none; -webkit-user-select:none;
+    font:500 11px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    letter-spacing:.02em;
+    color:#24170f; opacity:.7;
+    text-shadow:0 0 3px rgba(234,225,200,.9), 0 0 6px rgba(234,225,200,.7);
+  }
   .reset-btn span{
     font-family: 'Monthoers', Georgia, serif;
     font-size: 1.725rem;
@@ -185,12 +197,12 @@
   .secret-panel{
     position:relative;
     width:100%; max-width:420px;
-    max-height:80vh;
-    overflow-y:auto;
+    max-height:88vh;
+    overflow-y:auto; -webkit-overflow-scrolling:touch;
     background: var(--ink);
     color:#EAE1C8;
     border-radius:10px;
-    padding:30px 22px 22px;
+    padding:26px 20px 20px;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     box-shadow: 0 10px 40px rgba(0,0,0,.5);
   }
@@ -202,11 +214,28 @@
   }
   .secret-panel ol{
     margin:0; padding-left:1.2em;
-    font-size:.92rem;
-    line-height:1.5;
+    font-size:.88rem;
+    line-height:1.45;
   }
-  .secret-panel li{ margin-bottom:.6em; }
+  .secret-panel li{ margin-bottom:.5em; }
   .secret-panel li:last-child{ margin-bottom:0; }
+  .secret-links{
+    margin-top:20px; padding-top:16px;
+    border-top:1px solid rgba(234,225,200,.25);
+    display:flex; flex-direction:column; gap:12px; align-items:stretch;
+  }
+  .secret-coffee{
+    display:block; text-align:center; text-decoration:none;
+    background:#EAE1C8; color:#24170f;
+    font-weight:600; font-size:.95rem;
+    padding:12px 16px; border-radius:8px;
+  }
+  .secret-insta{
+    display:block; text-align:center; text-decoration:none;
+    color:#EAE1C8; font-size:.88rem;
+    padding:6px 0;
+  }
+  .secret-insta:hover, .secret-coffee:hover{ opacity:.85; }
   .secret-close{
     position:absolute; top:8px; right:10px;
     background:none; border:none;
@@ -340,11 +369,16 @@
     <button class="secret-close" id="secretClose" type="button" aria-label="Close">&times;</button>
     <h2>How this actually works</h2>
     <ol>
-      <li>Before typing, tap the zit (above and to the right of the eye).</li>
-      <li>Type the secret answer. "Can you guess what" will spell itself out on screen automatically while you're actually typing the real answer underneath.</li>
-      <li>When you're done typing the answer, tap the zit again to lock it in.</li>
-      <li>Finish the sentence however you like, normally, then poke the eye. It will reveal whatever you secretly typed as the answer.</li>
+      <li><strong>Set up.</strong> Have a friend secretly write down a first name, a number from 1 to 100, or their birth month. Make sure you can see it.</li>
+      <li><strong>Get ready.</strong> Open EyeKnowsAll.com and tap the zit above and to the right of the eye.</li>
+      <li><strong>Type the secret.</strong> Type what they wrote. The screen spells &ldquo;Can you guess what&rdquo; instead (18 characters max). Tap the zit again, then finish the question however you like.</li>
+      <li><strong>Poke the eye.</strong> It reveals the answer.</li>
+      <li><strong>Practice.</strong> Try it a few times before showing a friend.</li>
     </ol>
+    <div class="secret-links">
+      <a class="secret-coffee" href="https://www.paypal.com/qrcodes/venmocs/d4c45dc4-b8a7-4582-be68-4916acf2c9b8?amount=5.00&amp;currency_code=USD&amp;created=1791899438.6351418" target="_blank" rel="noopener noreferrer">Buy me a coffee</a>
+      <a class="secret-insta" href="https://www.instagram.com/joshua_stacy_up_close" target="_blank" rel="noopener noreferrer">Instagram: @joshua_stacy_up_close</a>
+    </div>
   </div>
 </div>
 
@@ -1088,5 +1122,7 @@
   setTimeout(start, 10000); // never stay blank if something hangs
 })();
 </script>
+<div class="site-copyright">&copy; 2026 Joshua Stacy. All rights reserved.</div>
+
 </body>
 </html>
