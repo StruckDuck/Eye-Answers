@@ -501,6 +501,109 @@
     eyePupil.style.visibility = 'hidden';
   }
 
+  // ============================================================
+  // number words -> numerals (0 to 100). only an entry that is entirely a
+  // number in words is converted ("twelve" -> "12"); anything else is shown
+  // exactly as typed. handles hyphen / space / run-together forms and common
+  // misspellings. a typo that could be two different numbers is left alone
+  // rather than guessed.
+  // ============================================================
+  var NUM_WORDS = {
+    zero:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9,
+    ten:10, eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15, sixteen:16,
+    seventeen:17, eighteen:18, nineteen:19,
+    twenty:20, thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90
+  };
+  var NUM_ALIASES = {
+    // known misspellings, exact
+    fourty:'forty', fortey:'forty', forty:'forty', fourtey:'forty', ninty:'ninety', nintey:'ninety',
+    ninetey:'ninety', eigth:'eight', eigtht:'eight', eigthy:'eighty', eigty:'eighty', eightey:'eighty',
+    egiht:'eight', fiftey:'fifty', fivty:'fifty', fifthy:'fifty', sixtey:'sixty', thirtey:'thirty',
+    thrity:'thirty', twentey:'twenty', twenny:'twenty', twinty:'twenty', tweny:'twenty', twelfe:'twelve',
+    tweleve:'twelve', twleve:'twelve', twelv:'twelve', elaven:'eleven', elevin:'eleven', eleaven:'eleven',
+    forteen:'fourteen', fourtean:'fourteen', fourtene:'fourteen', fiveteen:'fifteen', fifthteen:'fifteen',
+    fiftene:'fifteen', fifteeen:'fifteen', sixtean:'sixteen', sixtene:'sixteen', seventeen:'seventeen',
+    seventean:'seventeen', sevnteen:'seventeen', eightteen:'eighteen', eigthteen:'eighteen', eightene:'eighteen',
+    ninteen:'nineteen', nineten:'nineteen', ninetene:'nineteen', thirten:'thirteen', thirtene:'thirteen',
+    thriteen:'thirteen', sevin:'seven', sevan:'seven', sevven:'seven', thre:'three', thrree:'three',
+    fiv:'five', nien:'nine', nin:'nine', ninee:'nine', ate:'', too:'', tow:'', won:'', for:'', to:''
+  };
+  // single-word aliases that are also plain English words are deliberately
+  // blank above, so they never become numbers
+  var TENS = { twenty:1, thirty:1, forty:1, fifty:1, sixty:1, seventy:1, eighty:1, ninety:1 };
+
+  function editDistance(a, b){
+    // optimal string alignment (counts a swapped pair of letters as one slip)
+    var d = [], i, j;
+    for (i = 0; i <= a.length; i++){ d[i] = [i]; }
+    for (j = 1; j <= b.length; j++){ d[0][j] = j; }
+    for (i = 1; i <= a.length; i++){
+      for (j = 1; j <= b.length; j++){
+        var cost = a[i-1] === b[j-1] ? 0 : 1;
+        d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + cost);
+        if (i > 1 && j > 1 && a[i-1] === b[j-2] && a[i-2] === b[j-1]){
+          d[i][j] = Math.min(d[i][j], d[i-2][j-2] + 1);
+        }
+      }
+    }
+    return d[a.length][b.length];
+  }
+
+  // returns the canonical number word for one typed word, or '' if none
+  function canonicalNumberWord(w){
+    if (Object.prototype.hasOwnProperty.call(NUM_WORDS, w)) return w;
+    if (Object.prototype.hasOwnProperty.call(NUM_ALIASES, w)) return NUM_ALIASES[w];
+    if (w.length < 5) return ''; // too short to guess at safely
+    var best = '', bestD = 99, tie = false;
+    Object.keys(NUM_WORDS).forEach(function(k){
+      if (k.length < 5) return;
+      var dist = editDistance(w, k);
+      if (dist < bestD){ bestD = dist; best = k; tie = false; }
+      else if (dist === bestD){ tie = true; }
+    });
+    return (bestD <= 1 && !tie) ? best : '';
+  }
+
+  function wordsToNumber(raw){
+    var s = String(raw || '').toLowerCase().replace(/[‐-―-]/g, ' ');
+    s = s.replace(/^[\s.,!?;:'"]+|[\s.,!?;:'"]+$/g, '').replace(/\s+/g, ' ');
+    if (!s || /[^a-z ]/.test(s)) return null;
+    var parts = s.split(' ');
+
+    // 100
+    if (parts.length <= 2){
+      var h = parts.join(' ');
+      if (h === 'hundred' || h === 'a hundred' || h === 'one hundred' || h === 'hunderd' ||
+          h === 'one hunderd' || h === 'a hunderd' || h === 'hundered' || h === 'one hundered') return 100;
+    }
+
+    var words = parts.map(canonicalNumberWord);
+    if (words.indexOf('') !== -1){
+      // maybe one run-together token like "twentyone"
+      if (parts.length !== 1) return null;
+      var t = parts[0], found = null, count = 0;
+      for (var i = 3; i <= t.length - 3; i++){
+        var L = canonicalNumberWord(t.slice(0, i)), R = canonicalNumberWord(t.slice(i));
+        if (L && R && TENS[L] && NUM_WORDS[R] >= 1 && NUM_WORDS[R] <= 9){
+          var v = NUM_WORDS[L] + NUM_WORDS[R];
+          if (found !== v){ found = v; count++; }
+        }
+      }
+      return count === 1 ? found : null;
+    }
+    if (words.length === 1) return NUM_WORDS[words[0]];
+    if (words.length === 2 && TENS[words[0]] && NUM_WORDS[words[1]] >= 1 && NUM_WORDS[words[1]] <= 9){
+      return NUM_WORDS[words[0]] + NUM_WORDS[words[1]];
+    }
+    return null;
+  }
+
+  // what the reveal should show for a secret entry
+  function secretToDisplay(secret){
+    var n = wordsToNumber(secret);
+    return n === null ? secret : n.toLocaleString('en-US');
+  }
+
   // shown instead of an answer when nothing was ever secretly captured.
   // which list is used depends on how much effort the typed-out question
   // shows (by word count); each list cycles independently, in order,
@@ -611,7 +714,7 @@
   // field and the secret entry are cleared right then so a new question can
   // be started as soon as the answer is up
   function playAnswerReveal(asked){
-    var answer = (asked.secret || '').trim();
+    var answer = secretToDisplay((asked.secret || '').trim());
     if (!answer){
       answer = (asked.words >= THIN_QUESTION_WORD_LIMIT)
         ? nextFullFailurePhrase()
