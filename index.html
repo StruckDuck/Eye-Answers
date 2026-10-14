@@ -327,6 +327,9 @@
        fitAnswerTextSize() */
   }
 
+  .reveal-answer .reveal-line{ margin:0.1em 0; }
+  .reveal-answer .reveal-big{ line-height:1.1; }
+
   @media (prefers-reduced-motion: reduce){
     * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
@@ -667,6 +670,48 @@
     'Your question carries no weight, only haste.',
     'You spoke without care, and I heard it.'
   ];
+  // ------------------------------------------------------------
+  // yes/no questions with no secret entered: the eye answers like an
+  // 8-ball. 10 yes, 5 "ask again" (always the asker's fault, never the
+  // eye's), 5 no. picked at random, never the same one twice in a row.
+  // ------------------------------------------------------------
+  var EIGHT_BALL = [
+    'Without a doubt.', 'It is certain.', 'Yes, and you know it.', 'The signs are clear. Yes.',
+    'Most likely.', 'Yes.', 'You may rely on it.', 'The outlook is bright.',
+    'All paths lead to yes.', 'I have seen it. Yes.',
+    'Your question is clouded by doubt. Ask again.', 'You are not ready to hear it. Ask later.',
+    'Quiet your mind, then ask again.', 'You asked too quickly. Ask again.', 'Your thoughts are scattered. Ask again.',
+    'No.', 'Do not count on it.', 'The outlook is dark.', 'Very doubtful.', 'My sight says no.'
+  ];
+  var YESNO_STARTERS = {
+    is:1, are:1, am:1, was:1, were:1, do:1, does:1, did:1, will:1, would:1, shall:1, should:1,
+    can:1, could:1, may:1, might:1, must:1, have:1, has:1, had:1,
+    isnt:1, arent:1, wasnt:1, werent:1, dont:1, doesnt:1, didnt:1, wont:1, wouldnt:1, shouldnt:1,
+    cant:1, couldnt:1, havent:1, hasnt:1, hadnt:1
+  };
+  var QUESTION_WORDS = { what:1, who:1, whom:1, whose:1, when:1, where:1, why:1, how:1, which:1 };
+
+  // a yes/no question ends in "?", starts with a verb like is/do/will/can,
+  // and has no question word (what, who, how...) anywhere in it
+  function isYesNoQuestion(text){
+    var t = String(text || '').trim().toLowerCase().replace(/[\u2018\u2019']/g, '');
+    if (t.charAt(t.length - 1) !== '?') return false;
+    var words = t.replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
+    if (!words.length || !YESNO_STARTERS[words[0]]) return false;
+    for (var i = 0; i < words.length; i++){
+      if (QUESTION_WORDS[words[i]]) return false;
+    }
+    return true;
+  }
+
+  var lastEightBall = -1;
+  function nextEightBallAnswer(){
+    var i;
+    do { i = Math.floor(Math.random() * EIGHT_BALL.length); } while (i === lastEightBall);
+    lastEightBall = i;
+    return EIGHT_BALL[i];
+  }
+
   var THIN_QUESTION_WORD_LIMIT = 6; // questions shorter than this count as thin
 
   function makePhraseCycler(list, storageKey){
@@ -744,26 +789,158 @@
     return { fontPx: chosen, maxWidthPx: maxWidthPx };
   }
 
-  // asked = { secret, words } taken at the moment of the poke, because the
+  // ============================================================
+  // sentence answers: when there is a secret and the finished question
+  // mentions a category, a small lead-in and/or tail frames a large answer
+  // ============================================================
+  // [above, below]; null = no line there
+  var SENTENCE_TEMPLATES = {
+    name: [
+      ['I am sensing the name', null], [null, 'is the obvious choice'],
+      ['A name rises from your thoughts', null], ['Someone answers to the name', null],
+      ['Your mind keeps returning to', null]
+    ],
+    number: [
+      ['The number is', null], ['I counted the beats of your thought', null],
+      [null, 'the number you tried to hide'], ['The digits are clear', null],
+      ['Your number, without a doubt', null]
+    ],
+    color: [
+      ['I see the color', null], ['A color floods my vision', null],
+      [null, 'surrounds your thoughts'], ['The color of your mind is', null],
+      [null, 'there is no doubt']
+    ],
+    month: [
+      ['I see the calendar turn to', null], ['The month is', null],
+      [null, 'is circled in your mind'], ['The month that stands out is', null],
+      ['Time slows at the month of', null]
+    ],
+    day: [
+      ['The calendar settles on', null], ['The day is', null],
+      [null, 'is circled in your mind'], ['I see the day', null],
+      ['Your thoughts stop at', null]
+    ],
+    animal: [
+      ['A creature stirs in your mind', null], ['I hear it breathing', null],
+      [null, 'I see its eyes'], ['The animal in your mind is', null],
+      ['I sense the animal', null]
+    ],
+    city: [
+      ['In your mind, you are standing in', null], ['You are thinking of', null],
+      [null, 'pulls at your thoughts'], ['I see the streets of', null],
+      ['The city is', null]
+    ],
+    food: [
+      ['I taste', null], ['I smell', null],
+      [null, 'is on your mind'], ['The food in your mind is', null],
+      ['Your hunger points to', null]
+    ]
+  };
+  var CATEGORY_PATTERNS = [
+    ['name', /\bnames?\b/], ['number', /\bnumbers?\b/], ['color', /\bcolou?rs?\b/],
+    ['month', /\bmonths?\b/], ['day', /\bdays?\b/], ['animal', /\banimals?\b/],
+    ['city', /\b(?:city|cities)\b/], ['food', /\bfoods?\b/]
+  ];
+
+  // earliest keyword in the question wins
+  function detectCategory(question){
+    var q = (question || '').toLowerCase();
+    var best = null, bestIdx = Infinity;
+    for (var i = 0; i < CATEGORY_PATTERNS.length; i++){
+      var m = CATEGORY_PATTERNS[i][1].exec(q);
+      if (m && m.index < bestIdx){ bestIdx = m.index; best = CATEGORY_PATTERNS[i][0]; }
+    }
+    return best;
+  }
+
+  var lastTemplate = {};
+  function pickTemplate(category){
+    var list = SENTENCE_TEMPLATES[category];
+    var i;
+    do { i = Math.floor(Math.random() * list.length); }
+    while (list.length > 1 && i === lastTemplate[category]);
+    lastTemplate[category] = i;
+    return list[i];
+  }
+
+  function capitalizeName(str){
+    return str.toLowerCase().replace(/(^|[\s\-'])([a-z])/g, function(m, a, b){ return a + b.toUpperCase(); });
+  }
+
+  // asked = { secret, words, question } taken at the moment of the poke, because the
   // field and the secret entry are cleared right then so a new question can
   // be started as soon as the answer is up
   function playAnswerReveal(asked){
-    var answer = secretToDisplay((asked.secret || '').trim());
-    if (!answer){
-      answer = (asked.words >= THIN_QUESTION_WORD_LIMIT)
-        ? nextFullFailurePhrase()
-        : nextThinFailurePhrase();
+    var secret = (asked.secret || '').trim();
+    var answer = secretToDisplay(secret);
+    var template = null;
+    if (answer){
+      var category = detectCategory(asked.question);
+      if (category){
+        template = pickTemplate(category);
+        if (category === 'name') answer = capitalizeName(answer);
+      }
+    } else {
+      if (isYesNoQuestion(asked.question)){
+        answer = nextEightBallAnswer();
+      } else {
+        answer = (asked.words >= THIN_QUESTION_WORD_LIMIT)
+          ? nextFullFailurePhrase()
+          : nextThinFailurePhrase();
+      }
     }
 
-    var text = answer;
-    var fit = fitAnswerTextSize(text, eyeContent.getBoundingClientRect());
+    var rect = eyeContent.getBoundingClientRect();
+    var fit = fitAnswerTextSize(answer, rect);
 
     var el = document.createElement('div');
     el.className = 'reveal-answer';
-    el.style.fontSize = fit.fontPx + 'px';
     el.style.maxWidth = fit.maxWidthPx + 'px';
-    el.textContent = text;
+
+    if (!template){
+      el.style.fontSize = fit.fontPx + 'px';
+      el.textContent = answer;
+      eyeContent.appendChild(el);
+      return;
+    }
+
+    var big = document.createElement('div');
+    big.className = 'reveal-big';
+    big.textContent = answer;
+    var parts = [];
+    if (template[0]){
+      var lead = document.createElement('div');
+      lead.className = 'reveal-line';
+      lead.textContent = template[0];
+      parts.push(lead);
+    }
+    parts.push(big);
+    if (template[1]){
+      var tail = document.createElement('div');
+      tail.className = 'reveal-line';
+      tail.textContent = template[1];
+      parts.push(tail);
+    }
+    for (var i = 0; i < parts.length; i++) el.appendChild(parts[i]);
     eyeContent.appendChild(el);
+
+    // small lines at ~42% of the answer size; shrink everything together
+    // until the whole block sits inside the eye window
+    var maxH = rect.height * 0.26;
+    var scale = 1;
+    function apply(){
+      big.style.fontSize = (fit.fontPx * scale) + 'px';
+      var small = Math.max(rect.width * 0.022, fit.fontPx * 0.42 * scale);
+      for (var j = 0; j < parts.length; j++){
+        if (parts[j] !== big) parts[j].style.fontSize = small + 'px';
+      }
+    }
+    apply();
+    var guard = 0;
+    while (el.getBoundingClientRect().height > maxH && guard++ < 30){
+      scale *= 0.93;
+      apply();
+    }
   }
 
   // ============================================================
@@ -896,7 +1073,7 @@
 
     // keep what the reveal needs, then clear the field and the secret entry
     // right away so the next question can be typed immediately
-    var asked = { secret: capture.buffer, words: wordCount(questionInput.value) };
+    var asked = { secret: capture.buffer, words: wordCount(questionInput.value), question: questionInput.value };
     questionInput.value = '';
     capture = freshCapture();
     if (document.activeElement === questionInput) questionInput.blur();
