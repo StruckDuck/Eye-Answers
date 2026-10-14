@@ -439,7 +439,7 @@
   var state = { busy:false, revealed:false, holding:false };
 
   function freshCapture(){
-    return { active:false, locked:false, fillerPos:0, buffer:'' };
+    return { active:false, locked:false, fillerPos:0, buffer:'', shown:'', comp:'' };
   }
   var capture = freshCapture();
   // true once a question has been answered: its text stays in the box, but it
@@ -451,6 +451,7 @@
     questionInput.value = '';
     // a zit tap made before this keeps the secret entry armed; just restart the filler
     capture.fillerPos = 0;
+    capture.shown = '';
   });
 
   // ============================================================
@@ -463,6 +464,7 @@
       questionInput.value += FILLER[capture.fillerPos];
       capture.fillerPos += 1;
     }
+    capture.shown = questionInput.value;
     // filler exhausted: nothing further shows, but the keystroke that got
     // us here has already been logged into capture.buffer by the caller
   }
@@ -480,10 +482,16 @@
     }
     if (!capture.active) return; // normal mode: let the browser do its thing
 
+    // Android keyboards send composition events the page cannot cancel. those
+    // are left to the input-event backup below, so nothing is counted twice
+    if (!e.cancelable) return;
     e.preventDefault();
 
     if (e.inputType === 'insertText' || e.inputType === 'insertReplacementText' || e.inputType === 'insertFromPaste'){
       var text = e.data || '';
+      // the final commit of a word already counted while it was composed
+      if (capture.comp && text === capture.comp){ capture.comp = ''; return; }
+      capture.comp = '';
       for (var i = 0; i < text.length; i++){
         capture.buffer += text[i];
         advanceFiller();
@@ -496,6 +504,56 @@
     }
     // anything else (line breaks, IME composition, etc.) is simply ignored
   });
+
+  // backup for keyboards whose edits cannot be blocked (Android composition).
+  // whatever actually landed in the field is compared with what was last
+  // shown: new letters go into the hidden answer, removed letters count as
+  // backspaces, and the field is put back to the filler phrase
+  questionInput.addEventListener('input', function(ev){
+    if (!capture.active) return;
+    var now = questionInput.value;
+    var before = capture.shown;
+    if (now === before) return;
+    var pre = 0;
+    var maxPre = Math.min(before.length, now.length);
+    while (pre < maxPre && before.charAt(pre) === now.charAt(pre)) pre++;
+    var suf = 0;
+    var maxSuf = Math.min(before.length, now.length) - pre;
+    while (suf < maxSuf && before.charAt(before.length - 1 - suf) === now.charAt(now.length - 1 - suf)) suf++;
+    var removed = before.length - pre - suf;
+    var added = now.slice(pre, now.length - suf).replace(/[\r\n]/g, '');
+    questionInput.value = before;
+    var i;
+    for (i = 0; i < removed; i++){
+      capture.buffer = capture.buffer.slice(0, -1);
+      advanceFiller();
+    }
+    // a word being composed arrives again, longer, with every keystroke:
+    // only the new part counts. a changed word replaces what was counted
+    var composing = ev.isComposing || /composition/i.test(ev.inputType || '');
+    if (capture.comp && removed === 0){
+      if (added.indexOf(capture.comp) === 0){
+        var rest = added.slice(capture.comp.length);
+        capture.comp = composing ? added : '';
+        added = rest;
+      } else if (composing){
+        capture.buffer = capture.buffer.slice(0, capture.buffer.length - capture.comp.length);
+        capture.comp = added;
+      } else {
+        capture.comp = '';
+      }
+    } else {
+      capture.comp = composing ? added : '';
+    }
+    for (i = 0; i < added.length; i++){
+      capture.buffer += added.charAt(i);
+      advanceFiller();
+    }
+    capture.shown = questionInput.value;
+    try { questionInput.setSelectionRange(questionInput.value.length, questionInput.value.length); } catch (e){}
+  });
+
+  questionInput.addEventListener('compositionend', function(){ capture.comp = ''; });
 
   // don't let a tap into the field also register as a tap on the eye
   questionInput.addEventListener('click', function(e){ e.stopPropagation(); });
@@ -527,6 +585,7 @@
       // operator can start typing the phrase manually and trigger the
       // zit at any point
       capture.fillerPos = questionSpent ? 0 : Math.min(questionInput.value.length, FILLER.length);
+      capture.shown = questionInput.value;
     } else {
       capture.active = false;
       if (capture.buffer.length > 0){
