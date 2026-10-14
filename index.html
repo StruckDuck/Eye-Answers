@@ -859,22 +859,43 @@
       vkRenderCase();
     }
 
-    // key feedback. Android: the vibration API. iPhone (Safari 17.4+): a hidden
-    // switch control is toggled inside the touch, which makes iOS give its
-    // small tap. neither is available everywhere, so failures are ignored.
-    var vkHapticLabel = null;
-    try {
-      var hl = document.createElement('label');
-      hl.setAttribute('aria-hidden', 'true');
-      hl.style.cssText = 'position:fixed;left:-60px;top:-60px;width:40px;height:40px;opacity:0.01;pointer-events:none;overflow:hidden;';
-      var hi = document.createElement('input');
-      hi.type = 'checkbox'; hi.setAttribute('switch', ''); hi.tabIndex = -1;
-      hl.appendChild(hi); document.body.appendChild(hl);
-      vkHapticLabel = hl;
-    } catch (err){}
-    function vkHaptic(){
-      if (navigator.vibrate){ try { navigator.vibrate(8); } catch (err){} return; }
-      if (vkHapticLabel){ try { vkHapticLabel.click(); } catch (err){} }
+    // key feedback: a short, quiet click (a tiny synthesized sound, no audio
+    // files) plus a small buzz where the vibration API exists (Android).
+    // iPhone only allows audio after a touch, so the audio engine is woken
+    // on the first key press and works from the next one on. the iPhone
+    // silent switch mutes it, like other web audio.
+    var vkAudio = null, vkClick = null;
+    function vkAudioInit(){
+      if (vkAudio) { if (vkAudio.state === 'suspended') { try { vkAudio.resume(); } catch (err){} } return; }
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      try {
+        vkAudio = new AC();
+        var sr = vkAudio.sampleRate, n = Math.floor(sr * 0.035);
+        vkClick = vkAudio.createBuffer(1, n, sr);
+        var d = vkClick.getChannelData(0), prev = 0;
+        for (var i = 0; i < n; i++){
+          var t = i / sr;
+          var noise = (Math.random() * 2 - 1);
+          prev = prev * 0.55 + noise * 0.45; // softened noise tick
+          var env = Math.exp(-t / 0.0045);
+          var knock = Math.sin(2 * Math.PI * 420 * t) * Math.exp(-t / 0.009) * 0.9;
+          d[i] = (prev * 0.9 * env + knock) * 0.6;
+        }
+        if (vkAudio.state === 'suspended') vkAudio.resume();
+      } catch (err){ vkAudio = null; }
+    }
+    function vkSound(rate){
+      if (!vkAudio || !vkClick) return;
+      try {
+        var src = vkAudio.createBufferSource(); src.buffer = vkClick; src.playbackRate.value = rate || 1;
+        var g = vkAudio.createGain(); g.gain.value = 0.35;
+        src.connect(g); g.connect(vkAudio.destination); src.start();
+      } catch (err){}
+    }
+    function vkHaptic(kind){
+      if (navigator.vibrate){ try { navigator.vibrate(8); } catch (err){} }
+      vkSound(kind === 'back' ? 0.7 : kind === 'mod' ? 0.85 : 1);
     }
 
     function vkSize(){
@@ -894,15 +915,17 @@
       if (!t || !t._vkPress) return;
       t.classList.add('hit');
       setTimeout(function(){ t.classList.remove('hit'); }, 110);
-      vkHaptic();
+      vkAudioInit();
+      vkHaptic(t._vkBack ? 'back' : (/spec/.test(t.className) ? 'mod' : ''));
       t._vkPress();
       if (t._vkBack){
         vkStopRepeat();
         vkRepeatDelay = setTimeout(function(){
-          vkRepeatTimer = setInterval(function(){ vkHaptic(); vkBackspace(); vkAfterKey(); }, 75);
+          vkRepeatTimer = setInterval(function(){ vkHaptic('back'); vkBackspace(); vkAfterKey(); }, 75);
         }, 420);
       }
     });
+    vk.addEventListener('pointerup', vkAudioInit);
     ['pointerup', 'pointercancel', 'pointerleave'].forEach(function(n){ vk.addEventListener(n, vkStopRepeat); });
     vk.addEventListener('touchstart', function(e){ e.preventDefault(); }, { passive:false });
     vk.addEventListener('mousedown', function(e){ e.preventDefault(); });
