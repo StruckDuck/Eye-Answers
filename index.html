@@ -219,6 +219,34 @@
   }
   .secret-panel li{ margin-bottom:.5em; }
   .secret-panel li:last-child{ margin-bottom:0; }
+  .secret-deeper{
+    display:block; width:100%; margin-top:18px;
+    background:none; color:#EAE1C8;
+    border:1px solid rgba(234,225,200,.5); border-radius:8px;
+    font:inherit; font-weight:600; font-size:.95rem;
+    padding:11px 16px; cursor:pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .secret-deeper:hover{ background:rgba(234,225,200,.08); }
+  .secret-back{
+    background:none; border:none; color:#EAE1C8;
+    font:inherit; font-size:.88rem; padding:0 0 10px; cursor:pointer;
+  }
+  #secretDeep[hidden]{ display:none; }
+  .deep-sec{ border-top:1px solid rgba(234,225,200,.2); padding:10px 0; }
+  .deep-sec:last-child{ border-bottom:1px solid rgba(234,225,200,.2); }
+  .deep-sec summary{
+    font-weight:600; font-size:.95rem; color:#fff; cursor:pointer;
+    list-style:none; display:flex; justify-content:space-between; align-items:center;
+  }
+  .deep-sec summary::-webkit-details-marker{ display:none; }
+  .deep-sec summary::after{ content:'+'; font-weight:400; font-size:1.2rem; color:#EAE1C8; }
+  .deep-sec[open] summary::after{ content:'\2212'; }
+  .deep-sec p, .deep-sec ul{ font-size:.88rem; line-height:1.45; margin:.6em 0 0; }
+  .deep-sec ul{ padding-left:1.2em; }
+  .deep-sec li{ margin-bottom:.35em; }
+  .deep-cats{ font-weight:700; color:#fff; }
+  #secretMain[hidden]{ display:none; }
   .secret-links{
     margin-top:20px; padding-top:16px;
     border-top:1px solid rgba(234,225,200,.25);
@@ -370,6 +398,7 @@
 <div class="secret-overlay" id="secretOverlay">
   <div class="secret-panel">
     <button class="secret-close" id="secretClose" type="button" aria-label="Close">&times;</button>
+    <div id="secretMain">
     <h2>How this actually works</h2>
     <ol>
       <li><strong>Tap the zit.</strong> It's the bump above and to the right of the eye. Nothing will appear to happen.</li>
@@ -378,9 +407,50 @@
       <li><strong>Finish the question.</strong> Type whatever you like to end the question.</li>
       <li><strong>Backspace counts as a keystroke.</strong> It deletes a letter from the secret, but the sentence keeps spelling forward.</li>
     </ol>
+    <button class="secret-deeper" id="secretDeeper" type="button">Dig deeper</button>
     <div class="secret-links">
       <a class="secret-coffee" href="https://www.paypal.com/qrcodes/venmocs/d4c45dc4-b8a7-4582-be68-4916acf2c9b8?amount=5.00&amp;currency_code=USD&amp;created=1791899438.6351418" target="_blank" rel="noopener noreferrer">Buy me a coffee</a>
       <a class="secret-insta" href="https://www.instagram.com/joshua_stacy_up_close" target="_blank" rel="noopener noreferrer">Instagram: @joshua_stacy_up_close</a>
+    </div>
+    </div>
+    <div id="secretDeep" hidden>
+      <button class="secret-back" id="secretBack" type="button">&larr; Back</button>
+      <h2>Dig deeper</h2>
+      <details class="deep-sec" open>
+        <summary>Numbers</summary>
+        <p>Type numbers as words. If you type &ldquo;twelve&rdquo;, the eye shows 12. This means you never have to switch your keyboard to the number pad while entering the secret, which could look suspicious. It works from 0 to 100 and forgives misspellings.</p>
+      </details>
+      <details class="deep-sec">
+        <summary>Sentence answers</summary>
+        <p>If you enter a secret and your question contains one of these categories, the eye answers in a full sentence.</p>
+        <p class="deep-cats">Name, Number, Color, Month, Day, Animal, City, Food</p>
+        <p>Examples:</p>
+        <ul>
+          <li>Can you guess what name they are thinking of?</li>
+          <li>Can you guess what color Whitney is picturing?</li>
+          <li>Can you guess what city Rusty is from?</li>
+        </ul>
+      </details>
+      <details class="deep-sec">
+        <summary>Yes/no questions</summary>
+        <p>If you don&rsquo;t enter a secret and ask a yes/no question, the eye answers like a magic 8-ball.</p>
+      </details>
+      <details class="deep-sec">
+        <summary>Everything else</summary>
+        <p>If you don&rsquo;t enter a secret and the question isn&rsquo;t yes/no, the eye gives one of its stock phrases.</p>
+      </details>
+      <details class="deep-sec">
+        <summary>The zit</summary>
+        <ul>
+          <li>Tap it before you type the secret.</li>
+          <li>Tap it again to lock the secret in.</li>
+        </ul>
+      </details>
+      <details class="deep-sec">
+        <summary>Add to your home screen</summary>
+        <p><strong>iPhone (Safari):</strong> tap Share, then Add to Home Screen, then Add.</p>
+        <p><strong>Android (Chrome):</strong> tap the three-dot menu, then Add to Home screen (or Install app), then Add.</p>
+      </details>
     </div>
   </div>
 </div>
@@ -1213,8 +1283,20 @@
   // secret backstage instructions -- opened by a two-finger swipe down,
   // only when it starts over the eye card itself
   // ============================================================
-  function openSecretPanel(){ secretOverlay.classList.add('open'); }
+  var secretMain = document.getElementById('secretMain');
+  var secretDeep = document.getElementById('secretDeep');
+  function showSecretMain(){ secretDeep.hidden = true; secretMain.hidden = false; }
+  function openSecretPanel(){ showSecretMain(); secretOverlay.classList.add('open'); }
   function closeSecretPanel(){ secretOverlay.classList.remove('open'); }
+  document.getElementById('secretDeeper').addEventListener('click', function(e){
+    e.stopPropagation();
+    secretMain.hidden = true; secretDeep.hidden = false;
+    var panel = secretOverlay.querySelector('.secret-panel'); if (panel) panel.scrollTop = 0;
+  });
+  document.getElementById('secretBack').addEventListener('click', function(e){
+    e.stopPropagation();
+    showSecretMain();
+  });
 
   secretClose.addEventListener('click', function(e){
     e.stopPropagation();
