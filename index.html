@@ -430,13 +430,14 @@
       <details class="deep-sec">
         <summary>Sentence answers</summary>
         <p>If you enter a secret and your question contains one of these categories, the eye answers in a full sentence.</p>
-        <p class="deep-cats">Name, Number, Color, Month, Day, Animal, City, Food</p>
+        <p class="deep-cats">Name, Number, Color, Month, Day, Animal, City, Food, Year</p>
         <p>Examples:</p>
         <ul>
           <li>Can you guess what name they are thinking of?</li>
           <li>Can you guess what color Whitney is picturing?</li>
           <li>Can you guess what city Rusty is from?</li>
         </ul>
+        <p>For Year, you only need to type two digits as words. Up to this year&rsquo;s last two digits gives the 2000s, so &ldquo;thirteen&rdquo; shows 2013. Anything higher gives the 1900s, so &ldquo;seventy five&rdquo; shows 1975. It reaches back 100 years.</p>
       </details>
       <details class="deep-sec">
         <summary>Yes/no questions</summary>
@@ -976,6 +977,11 @@
       [null, 'pulls at your thoughts'], ['I see the streets of', null],
       ['The city is', null]
     ],
+    year: [
+      ['I see the year', null], ['Time rewinds to the year', null],
+      [null, 'is etched in your memory'], ['The year that stands out is', null],
+      ['Your mind drifts back to', null]
+    ],
     food: [
       ['I taste', null], ['I smell', null],
       [null, 'is on your mind'], ['The food in your mind is', null],
@@ -985,7 +991,7 @@
   var CATEGORY_PATTERNS = [
     ['name', /\bnames?\b/], ['number', /\bnumbers?\b/], ['color', /\bcolou?rs?\b/],
     ['month', /\bmonths?\b/], ['day', /\bdays?\b/], ['animal', /\banimals?\b/],
-    ['city', /\b(?:city|cities)\b/], ['food', /\bfoods?\b/]
+    ['city', /\b(?:city|cities)\b/], ['food', /\bfoods?\b/], ['year', /\byear\b/]
   ];
 
   // earliest keyword in the question wins
@@ -1009,6 +1015,19 @@
     return list[i];
   }
 
+  // year: two digits become a full year within the last 100 years. a number up to
+  // the current year's last two digits is this century, anything higher is the last
+  function secretToYear(secret, fallback){
+    var n = wordsToNumber(secret);
+    if (n === null) return fallback;
+    if (n >= 0 && n <= 99){
+      var cy = new Date().getFullYear();
+      var base = cy - (cy % 100);
+      return String(n <= (cy % 100) ? base + n : base - 100 + n);
+    }
+    return String(n);
+  }
+
   function capitalizeName(str){
     return str.toLowerCase().replace(/(^|[\s\-'])([a-z])/g, function(m, a, b){ return a + b.toUpperCase(); });
   }
@@ -1025,6 +1044,7 @@
       if (category){
         template = pickTemplate(category);
         if (category === 'name') answer = capitalizeName(answer);
+        if (category === 'year') answer = secretToYear(secret, answer);
       }
     } else {
       if (isYesNoQuestion(asked.question)){
