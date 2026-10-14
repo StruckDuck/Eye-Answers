@@ -253,11 +253,13 @@
     display:flex; flex-direction:column; gap:12px; align-items:stretch;
   }
   .secret-coffee{
-    display:block; text-align:center; text-decoration:none;
-    background:#EAE1C8; color:#24170f;
-    font-weight:600; font-size:.95rem;
-    padding:12px 16px; border-radius:8px;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    text-decoration:none; color:#EAE1C8;
+    font-weight:600; font-size:.88rem;
+    -webkit-tap-highlight-color: transparent;
   }
+  .secret-coffee img{ display:block; width:160px; height:auto; transition:transform .12s ease; }
+  .secret-coffee:active img{ transform:translateY(3px) scale(.97); }
   .secret-insta{
     display:block; text-align:center; text-decoration:none;
     color:#EAE1C8; font-size:.88rem;
@@ -409,7 +411,10 @@
     </ol>
     <button class="secret-deeper" id="secretDeeper" type="button">Dig deeper</button>
     <div class="secret-links">
-      <a class="secret-coffee" href="https://www.paypal.com/qrcodes/venmocs/d4c45dc4-b8a7-4582-be68-4916acf2c9b8?amount=5.00&amp;currency_code=USD&amp;created=1791899438.6351418" target="_blank" rel="noopener noreferrer">Buy me a coffee</a>
+      <a class="secret-coffee" href="https://www.paypal.com/qrcodes/venmocs/d4c45dc4-b8a7-4582-be68-4916acf2c9b8?amount=5.00&amp;currency_code=USD&amp;created=1791899438.6351418" target="_blank" rel="noopener noreferrer" aria-label="Buy me a coffee">
+        <img src="assets/tip-mug.png?v=1" srcset="assets/tip-mug.png?v=1 1x, assets/tip-mug@2x.png?v=1 2x" width="160" height="154" alt="">
+        <span>Buy me a coffee</span>
+      </a>
       <a class="secret-insta" href="https://www.instagram.com/joshua_stacy_up_close" target="_blank" rel="noopener noreferrer">Instagram: @joshua_stacy_up_close</a>
     </div>
     </div>
