@@ -442,6 +442,16 @@
     return { active:false, locked:false, fillerPos:0, buffer:'' };
   }
   var capture = freshCapture();
+  // true once a question has been answered: its text stays in the box, but it
+  // is spent. a poke only blinks, and the text clears when the box is tapped
+  var questionSpent = false;
+  questionInput.addEventListener('focus', function(){
+    if (!questionSpent) return;
+    questionSpent = false;
+    questionInput.value = '';
+    // a zit tap made before this keeps the secret entry armed; just restart the filler
+    capture.fillerPos = 0;
+  });
 
   // ============================================================
   // the question field: normal typing by default. the zit flips it
@@ -516,7 +526,7 @@
       // pick up wherever the visible question text already is, so the
       // operator can start typing the phrase manually and trigger the
       // zit at any point
-      capture.fillerPos = Math.min(questionInput.value.length, FILLER.length);
+      capture.fillerPos = questionSpent ? 0 : Math.min(questionInput.value.length, FILLER.length);
     } else {
       capture.active = false;
       if (capture.buffer.length > 0){
@@ -1074,7 +1084,8 @@
     // keep what the reveal needs, then clear the field and the secret entry
     // right away so the next question can be typed immediately
     var asked = { secret: capture.buffer, words: wordCount(questionInput.value), question: questionInput.value };
-    questionInput.value = '';
+    // the question stays in the box until it is tapped again
+    questionSpent = true;
     capture = freshCapture();
     if (document.activeElement === questionInput) questionInput.blur();
 
@@ -1117,7 +1128,7 @@
     // a poke only counts as a question once something has been entered;
     // otherwise it is just a normal blink. the full reveal also runs right
     // after a previous one, so no RESET is needed between questions
-    var entered = questionInput.value.trim() !== '' || (capture.buffer || '').trim() !== '';
+    var entered = (!questionSpent && questionInput.value.trim() !== '') || (capture.buffer || '').trim() !== '';
     if (!entered){
       clearIdleBlink();
       playQuickBlink(scheduleIdleBlink);
@@ -1261,6 +1272,7 @@
     // eye is shut here -- swap everything back to fresh with nothing visible
     drawFrame(CLOSED_A);
     questionInput.value = '';
+    questionSpent = false;
     capture = freshCapture();
     state.revealed = false;
     showPupil();
