@@ -436,6 +436,7 @@
     #vkb.android{ --kb-bg:#1e1f22; --kb-key:#3a3d41; --kb-spec:#2b2d31; --kb-txt:#e8eaed; --kb-hit:#5a5e64; --kb-hit-spec:#4a4d52; --kb-shift-on:#a8c7fa; --kb-shift-ico:#062e6f; --kb-done:#a8c7fa; --kb-done-ico:#062e6f; }
   }
 /* guided demo coach (preview only), styled like the secret menu */
+#secretOverlay{display:none !important}
 #coachDim{position:fixed;inset:0;z-index:9000;background:rgba(20,24,23,.72);display:none;align-items:center;justify-content:center;padding:24px}
 #coachDim.show{display:flex}
 #coachBlock{position:fixed;inset:0;z-index:8998;display:none;background:transparent}
@@ -2041,6 +2042,10 @@
   var SECRET = 'blue';
   var QUESTION = "Can you guess what color Whitney is thinking of?";
   var TOTAL = 8;
+  // the secret menu is switched off during the demo (this is the real app with a guide on top)
+  document.addEventListener('touchstart', function(e){
+    if (e.touches && e.touches.length > 1 && e.target && e.target.closest && e.target.closest('#eyeStage')) e.stopPropagation();
+  }, true);
   var dim = document.getElementById('coachDim'), card = document.getElementById('coachCard');
   var panel = document.getElementById('coachPanel'), ring = document.getElementById('coachRing');
   var tag = document.getElementById('coachTag'), chip = document.getElementById('coachChip');
@@ -2099,7 +2104,7 @@
       panel.classList.remove('show'); setRing(null);
       card.innerHTML = head(1, 'The thought') +
         '<div class="coach-swatch" aria-hidden="true"></div>' +
-        '<p class="coach-text">You have asked your friend Whitney to write down a color so The Eye can’t see or hear her choice. For practice, let’s say she chooses <b>blue</b>.</p><p class="coach-sub">(Make sure you see what she writes)</p>' +
+        '<p class="coach-text">You have asked your friend Whitney to think of a color and write it down so The Eye can’t see what she wrote. You see that she wrote the color <b>blue</b>.</p>' +
         '<div class="coach-row"><button class="coach-skip" data-a="skip" type="button">Skip demo</button><button class="coach-btn" data-a="next" type="button">Next</button></div>';
       dim.classList.add('show'); return;
     }
