@@ -277,7 +277,7 @@
   }
 
   /* the art is scaled to cover the screen (--stage-w). tablets and desktop
-     fit the full art instead, since filling would crop the eye and push the
+     fit the full art instead, since filling would crop The Eye and push the
      field and zit off-screen */
   :root{ --stage-w: max(100vw, calc(100vh * 910 / 1618)); }
   @supports (height: 100dvh){
@@ -353,7 +353,7 @@
     color: var(--charcoal);
     line-height:1.15;
     text-align:center;
-    /* font-size and max-width are set at runtime to fit the eye's actual
+    /* font-size and max-width are set at runtime to fit The Eye's actual
        visible window, not the card's outer rectangle -- see
        fitAnswerTextSize() */
   }
@@ -440,8 +440,8 @@
 
 <div class="instructions-drawer" id="instructionsDrawer">
   <img class="drawer-art" src="assets/drawer.png?v=4" alt="">
-  <p class="instructions-text">Ask the eye a question,<br>
-  Poke the eye for your answer.</p>
+  <p class="instructions-text">Ask The Eye a question,<br>
+  Poke The Eye for your answer.</p>
   <button class="instructions-tab" id="instructionsTab" type="button" aria-label="Instructions">
     <span>INSTRUCTIONS</span>
   </button>
@@ -470,7 +470,7 @@
     <div id="secretMain">
     <h2>How this actually works</h2>
     <ol>
-      <li><strong>Tap the zit.</strong> It's the bump above and to the right of the eye. Nothing will appear to happen.</li>
+      <li><strong>Tap the zit.</strong> It's the bump above and to the right of The Eye. Nothing will appear to happen.</li>
       <li><strong>Tap the question box and type the secret.</strong> The box spells &ldquo;Can you guess what they are thinking?&rdquo; no matter what you type. You have 37 characters.</li>
       <li><strong>Tap the zit again, or double-tap the space bar.</strong> Either one locks the secret in.</li>
       <li><strong>Finish the question.</strong> Type whatever you like to end the question.</li>
@@ -492,39 +492,44 @@
       <h2>Dig deeper</h2>
       <details class="deep-sec" open>
         <summary>Numbers</summary>
-        <p>Type numbers as words. If you type &ldquo;twelve&rdquo;, the eye shows 12. This means you never have to switch your keyboard to the number pad while entering the secret, which could look suspicious. It works from 0 to 100 and forgives misspellings. On Android the keyboard has a number row built in, so digits can be typed straight in, and the period key also locks the secret.</p>
+        <p>This is useful for anyone whose phone keyboard separates the number and letter keys. Switching to numbers while seemingly typing a question could look suspicious if noticed.</p>
+        <p>Simply spell out any number between 0-100. If you type &ldquo;twelve&rdquo;, The Eye shows 12. If you type &ldquo;seventy five&rdquo; or &ldquo;seventyfive&rdquo; The Eye will show 75. Don&rsquo;t worry about misspelling a number, The Eye knows all.</p>
       </details>
       <details class="deep-sec">
         <summary>Sentence answers</summary>
-        <p>If you enter a secret and your question contains one of these categories, the eye answers in a full sentence.</p>
-        <p class="deep-cats">Name, Number, Color, Month, Day, Animal, City, Food, Year, Card</p>
+        <p>If you enter a secret and your question contains one of these category words, The Eye answers in a full sentence that is relevant to that category.</p>
+        <p class="deep-cats">Name, Number, Color, Month, Day,<br>Animal, City, Food, Year, Card</p>
         <p>Examples:</p>
         <ul>
           <li>Can you guess what name they are thinking of?</li>
           <li>Can you guess what color Whitney is picturing?</li>
-          <li>Can you guess what city Rusty is from?</li>
+          <li>Can you guess Rusty&rsquo;s favorite animal?</li>
         </ul>
-        <p>The eye follows who your question is about. Ask about &ldquo;my birth month&rdquo; and it says &ldquo;Your birth month is January&rdquo;. Ask what color Gerald is thinking of and it says &ldquo;The color of Gerald&rsquo;s mind is Pink&rdquo;. It works with names and with he, she and they.</p>
-        <p>For Year, you only need to type two digits as words. Up to this year&rsquo;s last two digits gives the 2000s, so &ldquo;thirteen&rdquo; shows 2013. Anything higher gives the 1900s, so &ldquo;seventy five&rdquo; shows 1975. It reaches back 100 years.</p>
-        <p>For Card, use the singular word &ldquo;card&rdquo; in your question, then type the rank and the suit, like &ldquo;ace h&rdquo;, &ldquo;seven c&rdquo;, &ldquo;jack d&rdquo; or &ldquo;ten s&rdquo;. Letters work for the suit (h, d, c, s) and for face cards (a, j, q, k), so &ldquo;k h&rdquo; is the King of Hearts. The eye answers with the rank and the suit&rsquo;s symbol, like 7 &clubs; or Queen &diams;.</p>
+        <p><strong>Year</strong></p>
+        <p>This one is also useful for anyone whose phone keyboard separates the number and letter keys.</p>
+        <p>Simply spell out the last two digits of whatever year you want The Eye to guess within the past 100 years. Spell a number lower than the current year&rsquo;s last two digits and The Eye guesses that year from the 2000&rsquo;s, so &ldquo;thirteen&rdquo; shows 2013. Anything higher gives the 1900s, so &ldquo;seventy five&rdquo; shows 1975.</p>
+        <p><strong>Card</strong></p>
+        <p>For Card, type the rank and the suit of the card you want The Eye to guess. For the ace of hearts type &ldquo;a h&rdquo;, for the seven of clubs type &ldquo;seven c&rdquo;, jack of diamonds type &ldquo;j d&rdquo;, for the ten of spades type &ldquo;ten s&rdquo;.</p>
+        <p>Single letters work for the suit (h, d, c, s) and for face cards (a, j, q, k), so &ldquo;k h&rdquo; is the King of Hearts. The Eye answers with the rank and the suit&rsquo;s symbol, like 7 &clubs; or Queen &diams;.</p>
       </details>
       <details class="deep-sec">
         <summary>Yes/no questions</summary>
-        <p>If you don&rsquo;t enter a secret and ask a yes/no question, the eye answers like a magic 8-ball.</p>
+        <p>If you don&rsquo;t enter a secret and ask a yes/no question, The Eye answers like a magic 8-ball.</p>
       </details>
       <details class="deep-sec">
         <summary>Everything else</summary>
-        <p>If you don&rsquo;t enter a secret and the question isn&rsquo;t yes/no, the eye gives one of its stock phrases.</p>
+        <p>If you don&rsquo;t enter a secret and the question isn&rsquo;t yes/no, The Eye gives one of its stock phrases.</p>
       </details>
       <details class="deep-sec">
         <summary>The zit</summary>
         <ul>
-          <li>Tap it before you type the secret.</li>
-          <li>Tap it again, or double-tap the space bar, to lock the secret in.</li>
+          <li>Tap the zit before you type the secret.</li>
+          <li>Tap the zit again, or double-tap the space bar, to lock the secret in.</li>
         </ul>
       </details>
       <details class="deep-sec">
         <summary>Add to your home screen</summary>
+        <p>Add the web app to your home page to access The Eye anytime you want!</p>
         <p><strong>iPhone (Safari):</strong> tap Share, then Add to Home Screen, then Add.</p>
         <p><strong>Android (Chrome):</strong> tap the three-dot menu, then Add to Home screen (or Install app), then Add.</p>
       </details>
@@ -557,7 +562,7 @@
   var LID_W = 760, LID_H = 728;
 
   // ------------------------------------------------------------
-  // the eye is played from preloaded frames: a static full-screen
+  // The Eye is played from preloaded frames: a static full-screen
   // background plus a small canvas that paints only the patch around the
   // lid. every step of every animation is driven by the frames
   // themselves, never by guessing when an image file has arrived.
@@ -569,7 +574,7 @@
   var LAST_FRAME = 11;    // last frame of a blink or opening; matches the resting pose
   // frame number -> file number. frame 6 is identical to frame 5 and reuses its file
   var FRAME_FILES = [0, 1, 2, 3, 4, 5, 5, 7, 8, 9, 10, 11];
-  var REVEAL_HOLD_MS = 5000;                 // how long the eye stays shut before the reveal
+  var REVEAL_HOLD_MS = 5000;                 // how long The Eye stays shut before the reveal
   var CONCENTRATE_FLICKER_MS = 3 * FRAME_MS; // ~270ms per swap while "concentrating"
 
   // the fixed filler phrase. this is what silently plays out on screen,
@@ -730,7 +735,7 @@
 
   questionInput.addEventListener('compositionend', function(){ capture.comp = ''; });
 
-  // don't let a tap into the field also register as a tap on the eye
+  // don't let a tap into the field also register as a tap on The Eye
   questionInput.addEventListener('click', function(e){ e.stopPropagation(); });
 
   // ============================================================
@@ -967,7 +972,7 @@
   }
 
   // ============================================================
-  // resting state: the pupil sits in the eye from the very start (and
+  // resting state: the pupil sits in The Eye from the very start (and
   // again after reset), with nothing in eyeContent. it's hidden for the
   // reveal and stays hidden once an answer is showing.
   // ============================================================
@@ -1113,7 +1118,7 @@
     'You spoke without care, and I heard it.'
   ];
   // ------------------------------------------------------------
-  // yes/no questions with no secret entered: the eye answers like an
+  // yes/no questions with no secret entered: The Eye answers like an
   // 8-ball. 10 yes, 5 "ask again" (always the asker's fault, never the
   // eye's), 5 no. picked at random, never the same one twice in a row.
   // ------------------------------------------------------------
@@ -1188,12 +1193,12 @@
 
   // ============================================================
   // the reveal: just the answer itself, already formed, centered in
-  // the eye the moment it opens -- sized and wrapped to actually fit
-  // inside the eye's visible window, not the card's outer rectangle
+  // The Eye the moment it opens -- sized and wrapped to actually fit
+  // inside The Eye's visible window, not the card's outer rectangle
   // ============================================================
 
   // finds the largest font size (allowing wrapping) whose rendered block
-  // still fits inside a conservative box sized to the eye's actual
+  // still fits inside a conservative box sized to The Eye's actual
   // lens-shaped window -- so short answers stay big and single-line,
   // and long ones wrap to two or three lines instead of shrinking to
   // the smallest possible size
@@ -1307,7 +1312,7 @@
 
 
   // ------------------------------------------------------------
-  // who the question is about. the eye mirrors it: "my birth month" gets
+  // who the question is about. The Eye mirrors it: "my birth month" gets
   // "Your birth month is...", "what color Gerald is thinking of" gets
   // "The color of Gerald's mind is...". lines that name no person are
   // left alone and stay in the mix for every question.
@@ -1716,7 +1721,7 @@
   }
 
   // ============================================================
-  // tap the eye: close, "concentrate" (flicker between the two shut
+  // tap The Eye: close, "concentrate" (flicker between the two shut
   // shapes) for REVEAL_HOLD_MS, open into the reveal
   // ============================================================
   async function concentrate(totalMs){
@@ -1775,7 +1780,7 @@
   }
 
   // a plain blink, reused for both ambient idle blinks and for taps on
-  // the eye once the answer is already showing -- eyeContent is left
+  // The Eye once the answer is already showing -- eyeContent is left
   // completely alone, so the answer just gets briefly covered and
   // uncovered like a real eyelid passing over it
   async function playQuickBlink(onDone){
@@ -1816,7 +1821,7 @@
 
   // ============================================================
   // secret backstage instructions -- opened by a two-finger swipe down,
-  // only when it starts over the eye card itself
+  // only when it starts over The Eye card itself
   // ============================================================
   var secretMain = document.getElementById('secretMain');
   var secretDeep = document.getElementById('secretDeep');
@@ -1886,13 +1891,13 @@
   }
 
   // ============================================================
-  // saccades -- small, controlled shifts of the eye's visible contents
-  // (the sclera window and whatever text sits on it), giving the eye a
+  // saccades -- small, controlled shifts of The Eye's visible contents
+  // (the sclera window and whatever text sits on it), giving The Eye a
   // watchful, slightly anxious quality rather than a calm, static stare.
   // more frequent than an idle blink, and a bit more pronounced than a
   // true micro-saccade, but always a quick, deliberate snap to one of a
   // handful of gaze positions and a hold there -- never a drift or a
-  // twitch. purely cosmetic; paused whenever the eye is mid-animation.
+  // twitch. purely cosmetic; paused whenever The Eye is mid-animation.
   // ============================================================
   var SACCADE_MIN_DELAY_MS = 650;
   var SACCADE_MAX_DELAY_MS = 1500;
