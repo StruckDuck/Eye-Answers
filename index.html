@@ -670,6 +670,7 @@
 
     if (e.inputType === 'insertText' || e.inputType === 'insertReplacementText' || e.inputType === 'insertFromPaste'){
       var text = e.data || '';
+      if (!text && e.dataTransfer){ try { text = e.dataTransfer.getData('text/plain') || ''; } catch (err){} }
       // the final commit of a word already counted while it was composed
       if (capture.comp && text === capture.comp){ capture.comp = ''; return; }
       capture.comp = '';
@@ -740,7 +741,11 @@
       capture.comp = composing ? added : '';
     }
     for (i = 0; i < added.length; i++){
-      capture.buffer += added.charAt(i);
+      var ch = added.charAt(i);
+      if (ch === '\u00a0') ch = ' ';
+      // a double space must lock on this path too, not only on the cancelable one
+      if (isDoubleSpace(ch)){ lockByDoubleSpace(); break; }
+      capture.buffer += ch;
       advanceFiller();
     }
     capture.shown = questionInput.value;
