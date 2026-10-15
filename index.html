@@ -754,6 +754,40 @@
 
   questionInput.addEventListener('compositionend', function(){ capture.comp = ''; });
 
+  // ?debug: an on-screen log of every keyboard event on the question box, for
+  // chasing keyboard quirks on a real phone. nothing shows without ?debug
+  if (/[?&]debug(&|=|$)/.test(location.search)){
+    (function(){
+      var box = document.createElement('div');
+      box.style.cssText = 'position:fixed;left:4px;right:4px;top:190px;max-height:250px;overflow:hidden;z-index:99999;pointer-events:none;background:rgba(0,0,0,.78);color:#9f9;font:10px/1.25 monospace;padding:4px 6px;border-radius:6px;white-space:pre-wrap;word-break:break-all';
+      document.body.appendChild(box);
+      var lines = [], last = 0;
+      function vis(t){ return String(t).replace(/ /g, '[nbsp]').replace(/ /g, '·').replace(/\n/g, '[nl]'); }
+      function draw(){ box.textContent = lines.join('\n'); box.scrollTop = box.scrollHeight; }
+      function log(ev, extra){
+        var now = Date.now(), dt = last ? (now - last) : 0; last = now;
+        var line = '+' + dt + ' ' + ev.type + (ev.inputType ? ' ' + ev.inputType : '') +
+          (ev.key !== undefined ? ' key=' + vis(ev.key) : '') +
+          (ev.data !== undefined && ev.data !== null ? ' data="' + vis(ev.data) + '"' : '') +
+          (ev.type === 'beforeinput' ? (ev.cancelable ? ' cancelable' : ' NOT-CANCELABLE') : '') +
+          (ev.isComposing ? ' composing' : '');
+        if (ev.dataTransfer){ try { line += ' dt="' + vis(ev.dataTransfer.getData('text/plain')) + '"'; } catch (e){} }
+        var idx = lines.length; lines.push(line); if (lines.length > 11) lines.shift();
+        draw();
+        setTimeout(function(){
+          var j = lines.indexOf(line); if (j < 0) return;
+          lines[j] = line + '\n   => box="' + vis(questionInput.value) + '" buf="' + vis(capture.buffer) + '" ' + (capture.active ? 'ACTIVE' : '') + (capture.locked ? ' LOCKED' : '');
+          draw();
+        }, 0);
+      }
+      ['keydown', 'beforeinput', 'input', 'compositionstart', 'compositionupdate', 'compositionend'].forEach(function(t){
+        questionInput.addEventListener(t, log, true);
+      });
+      lines.push(navigator.userAgent.slice(0, 90)); draw();
+    })();
+  }
+
+
   // don't let a tap into the field also register as a tap on The Eye
   questionInput.addEventListener('click', function(e){ e.stopPropagation(); });
 
