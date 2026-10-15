@@ -2119,7 +2119,7 @@
       '<p class="coach-text">Tap the question box and type: <b>' + SECRET + '</b></p>' +
       '<p class="coach-sub">Watch the box. The screen is typing a question, not your secret.</p>' +
       '<p class="coach-count">' + n + ' of 37 characters including spaces</p>' +
-      (warn ? '<p class="coach-sub coach-warn">' + warn + '</p>' : '') + foot(ready ? 'Next' : ''));
+      (warn ? '<p class="coach-sub coach-warn">' + warn + '</p>' : '') + foot(''));
   }
   var lastType = '';
   function renderFinish(warn){
@@ -2144,13 +2144,14 @@
       if (b.length > 0 && SECRET.indexOf(b) !== 0 && b.indexOf(SECRET) !== 0){ renderType('That isn’t blue. Tap Reset, then start again from the zit.'); return; }
       if (!c.active && !c.locked && b.length === 0 && lastType === 'armed'){ lastType = ''; go(2); return; }
       lastType = c.active ? 'armed' : lastType;
+      if (b === SECRET){ go(5); return; }
       renderType(); return;
     }
     if (step === 5 && c.locked){ go(6); return; }
     if (step === 5 && c.buffer.length > 0 && c.buffer.toLowerCase().indexOf(SECRET) !== 0){ return; }
     if (step === 6){
       var v = norm(box.value);
-      if (v.length >= norm(QUESTION).length && v.indexOf(norm(QUESTION)) === 0){ go(7); return; }
+      if (v.length >= norm(QUESTION).length && v.indexOf(norm(QUESTION)) === 0){ try { box.blur(); } catch (e) {} go(7); return; }
       renderFinish(); return;
     }
     if (step === 7 && eyeWin.querySelector('.reveal-answer')){ go(8); return; }
