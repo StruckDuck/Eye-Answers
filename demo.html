@@ -1,0 +1,2182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>The Eye Knows All (demo preview)</title>
+<meta name="apple-mobile-web-app-title" content="The Eye Knows All">
+<meta name="description" content="A mind-reading novelty app. Type a question and The Eye gives the answer.">
+<meta name="copyright" content="&copy; 2026 Joshua Stacy. All rights reserved.">
+<meta name="application-name" content="The Eye Knows All">
+<link rel="icon" type="image/png" href="assets/icon.png?v=6">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=6">
+<meta property="og:title" content="The Eye Knows All">
+<meta property="og:description" content="A mind-reading novelty app. Type a question and The Eye gives the answer.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://eyeknowsall.com/">
+<meta property="og:image" content="https://eyeknowsall.com/assets/link-preview.png?v=3">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The Eye Knows All">
+<meta name="twitter:description" content="A mind-reading novelty app. Type a question and The Eye gives the answer.">
+<meta name="twitter:image" content="https://eyeknowsall.com/assets/link-preview.png?v=3">
+<style>
+  @font-face{
+    font-family: 'Monthoers';
+    src: url('assets/monthoers.ttf?v=5') format('truetype');
+    font-display: swap;
+  }
+  :root{
+    --ink:#41504F;
+    --charcoal:#2A2620;
+    --focus:#C9A96E;
+  }
+  *{ box-sizing: border-box; }
+  html, body{
+    margin:0; padding:0; height:100%;
+    background: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body{
+    overflow:hidden;
+  }
+
+  /* the art fills the whole screen: scaled to cover, centered, and cropped
+     at whichever pair of edges overflows (sides on tall phones, top and
+     bottom on shorter ones). everything inside is positioned in percent of
+     the stage, so it all scales and crops together */
+  .app{
+    position:fixed; inset:0;
+    overflow:hidden;
+  }
+
+  .reset-btn{
+    position:fixed; top:16px; right:16px; z-index:50;
+    background:none; border:none; cursor:pointer;
+    padding:8px 10px;
+    opacity:.9; transition: opacity .2s ease;
+  }
+  .reset-btn:hover{ opacity:1; }
+
+  /* copyright line: tiny, centered at the very bottom, never catches a touch */
+  .site-copyright{
+    position:fixed; left:0; right:0; z-index:5;
+    bottom:calc(env(safe-area-inset-bottom, 0px) + 8px);
+    text-align:center; pointer-events:none; user-select:none; -webkit-user-select:none;
+    font:500 11px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    letter-spacing:.02em;
+    color:#24170f; opacity:.7;
+    text-shadow:0 0 3px rgba(234,225,200,.9), 0 0 6px rgba(234,225,200,.7);
+  }
+  .reset-btn span{
+    font-family: 'Monthoers', Georgia, serif;
+    font-size: 1.725rem;
+    color: #24170f;
+    text-shadow: 0 0 3px rgba(234,225,200,.9), 0 0 6px rgba(234,225,200,.7);
+  }
+
+  /* ---- the question field, sitting where YES/NO used to live ---- */
+  .type-field{
+    /* the opening in the frame is lumpy: only y 236 to 316 (of the 1618px
+       canvas) is clear everywhere. the field is exactly two lines tall and
+       centered on that band, so text never touches the rope, and a third
+       line scrolls the field by one whole line */
+    --fs: max(16px, calc(var(--stage-w) * 0.038)); /* 16px min: iOS zooms on focus below that */
+    --lh: calc(var(--fs) * 1.15);
+    position:absolute;
+    left:21.98%; width:57.69%;
+    top: calc(17.06% - var(--lh));
+    height: calc(var(--lh) * 2);
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0 calc(var(--stage-w) * 0.008);
+    margin: 0;
+    resize: none;
+    overflow: hidden;
+    font-family: 'Monthoers', Georgia, serif;
+    font-size: var(--fs);
+    line-height: var(--lh);
+    color: var(--charcoal);
+    text-align:left;
+    outline:none;
+    caret-color: #7a4a2a;
+    z-index:6;
+  }
+  .type-field::placeholder{ color: rgba(42,38,32,.4); }
+
+  /* ---- the zit: an invisible one-shot hotspot, no visual trace ---- */
+  .zit-btn{
+    position:absolute;
+    left:79.6%; top:30.4%;
+    width:20%; height:11.5%;
+    transform: translate(-50%, -50%);
+    background:none; border:none; padding:0; margin:0;
+    cursor:pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    z-index:7;
+  }
+
+  /* ---- public instructions drawer: one piece of art (panel + tab bump).
+     closed = slid up until only the tab bump shows. all sizes are fractions
+     of the drawer's own width so it scales with the art ---- */
+  .instructions-drawer{
+    --drawer-w: min(100vw, var(--stage-w));
+    --cream: #F6EBD0;
+    position:fixed;
+    top:0; left:0; right:0;
+    margin:0 auto;
+    width: var(--drawer-w);
+    aspect-ratio: 910 / 466;
+    z-index:60;
+    pointer-events:none;
+    transform: translateY(-77.7%);
+    transition: transform .35s ease;
+  }
+  .instructions-drawer.open{
+    transform: translateY(0);
+    pointer-events:auto;
+  }
+  .drawer-art{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    display:block;
+    user-select:none; -webkit-user-drag:none;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,.35));
+  }
+  .instructions-text{
+    position:absolute;
+    left:0; right:0;
+    top: env(safe-area-inset-top, 0px);
+    height: calc(64.4% - env(safe-area-inset-top, 0px));
+    margin:0;
+    padding: 0 10%;
+    display:flex; align-items:center; justify-content:center;
+    font-family: 'Monthoers', Georgia, serif;
+    color: var(--cream);
+    text-shadow: 0 1px 0 rgba(40,15,10,.7);
+    text-align:center;
+    font-size: calc(var(--drawer-w) * 0.05);
+    line-height:1.35;
+  }
+  .instructions-tab{
+    position:absolute;
+    left:6%; width:31%;
+    top:77.7%; height:22.3%;
+    display:flex; align-items:center; justify-content:center;
+    background:none; border:none; padding:0;
+    cursor:pointer;
+    pointer-events:auto;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .instructions-tab span{
+    font-family: 'Monthoers', Georgia, serif;
+    font-weight:600;
+    color: var(--cream);
+    text-shadow: 0 1px 0 rgba(40,15,10,.7);
+    font-size: max(12px, calc(var(--drawer-w) * 0.036));
+    letter-spacing:.02em;
+  }
+
+  /* ---- secret backstage instructions ---- */
+  .secret-overlay{
+    position:fixed; inset:0;
+    background: rgba(20,24,23,.72);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    z-index:100;
+    opacity:0;
+    pointer-events:none;
+    transition: opacity .2s ease;
+  }
+  .secret-overlay.open{
+    opacity:1;
+    pointer-events:auto;
+  }
+  .secret-panel{
+    position:relative;
+    width:100%; max-width:420px;
+    max-height:88vh;
+    overflow-y:auto; -webkit-overflow-scrolling:touch;
+    background: var(--ink);
+    color:#EAE1C8;
+    border-radius:10px;
+    padding:26px 20px 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    box-shadow: 0 10px 40px rgba(0,0,0,.5);
+  }
+  .secret-panel h2{
+    margin:0 0 14px;
+    font-size:1.05rem;
+    font-weight:600;
+    color:#fff;
+  }
+  .secret-panel ol{
+    margin:0; padding-left:1.2em;
+    font-size:.88rem;
+    line-height:1.45;
+  }
+  .secret-panel li{ margin-bottom:.5em; }
+  .secret-panel li:last-child{ margin-bottom:0; }
+  .secret-deeper{
+    display:block; width:100%; margin-top:18px;
+    background:none; color:#EAE1C8;
+    border:1px solid rgba(234,225,200,.5); border-radius:8px;
+    font:inherit; font-weight:600; font-size:.95rem;
+    padding:11px 16px; cursor:pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .secret-deeper:hover{ background:rgba(234,225,200,.08); }
+  a.secret-deeper{ text-align:center; text-decoration:none; box-sizing:border-box; margin-top:12px; }
+  .secret-back{
+    background:none; border:none; color:#EAE1C8;
+    font:inherit; font-size:.88rem; padding:0 0 10px; cursor:pointer;
+  }
+  #secretDeep[hidden]{ display:none; }
+  .deep-sec{ border-top:1px solid rgba(234,225,200,.2); padding:10px 0; }
+  .deep-sec:last-child{ border-bottom:1px solid rgba(234,225,200,.2); }
+  .deep-sec summary{
+    font-weight:600; font-size:.95rem; color:#fff; cursor:pointer;
+    list-style:none; display:flex; justify-content:space-between; align-items:center;
+  }
+  .deep-sec summary::-webkit-details-marker{ display:none; }
+  .deep-sec summary::after{ content:'+'; font-weight:400; font-size:1.2rem; color:#EAE1C8; }
+  .deep-sec[open] summary::after{ content:'\2212'; }
+  .deep-sec p, .deep-sec ul{ font-size:.88rem; line-height:1.45; margin:.6em 0 0; }
+  .deep-sec ul{ padding-left:1.2em; }
+  .deep-sec li{ margin-bottom:.35em; }
+  .deep-cats{ font-weight:700; color:#fff; }
+  #secretMain[hidden]{ display:none; }
+  .secret-links{
+    margin-top:20px; padding-top:16px;
+    border-top:1px solid rgba(234,225,200,.25);
+    display:flex; flex-direction:column; gap:12px; align-items:stretch;
+  }
+  .secret-coffee{
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    text-decoration:none; color:#EAE1C8;
+    font-weight:600; font-size:.88rem;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .secret-coffee img{ display:block; width:160px; height:auto; transition:transform .12s ease; }
+  .secret-coffee:active img{ transform:translateY(3px) scale(.97); }
+  .secret-insta{
+    display:block; text-align:center; text-decoration:none;
+    color:#EAE1C8; font-size:.88rem;
+    padding:6px 0;
+  }
+  .secret-insta:hover, .secret-coffee:hover{ opacity:.85; }
+  .secret-close{
+    position:absolute; top:8px; right:10px;
+    background:none; border:none;
+    color:#EAE1C8; font-size:1.5rem; line-height:1;
+    padding:6px 10px;
+    cursor:pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* the art is scaled to cover the screen (--stage-w). tablets and desktop
+     fit the full art instead, since filling would crop The Eye and push the
+     field and zit off-screen */
+  :root{ --stage-w: max(100vw, calc(100vh * 910 / 1618)); }
+  @supports (height: 100dvh){
+    :root{ --stage-w: max(100vw, calc(100dvh * 910 / 1618)); }
+  }
+  @media (min-aspect-ratio: 7/10){
+    :root{ --stage-w: calc(100vh * 910 / 1618); }
+    @supports (height: 100dvh){
+      :root{ --stage-w: calc(100dvh * 910 / 1618); }
+    }
+  }
+
+  .eye-stage{
+    position:absolute;
+    left:50%; top:50%;
+    width: var(--stage-w);
+    aspect-ratio: 910 / 1618;
+    transform: translate(-50%, -50%);
+    cursor:pointer;
+    opacity:0;
+    transition: opacity .4s ease;
+  }
+  .eye-stage.ready{ opacity:1; }
+
+  /* the carved-out box the question is typed into, drawn as art; the real
+     textarea sits transparently over its grey interior */
+  .textbox-art{
+    position:absolute;
+    left:14.18%; top:11.19%;
+    width:72.42%; height:auto;
+    display:block; pointer-events:none; user-select:none;
+    -webkit-user-drag:none;
+    z-index:5;
+  }
+
+  /* the pupil sits in its own mover layer so saccades shift only it --
+     the sclera behind it and any reveal text in front of it stay put */
+  .eye-look{
+    position:absolute; inset:0; z-index:2;
+    transition: transform .11s ease-out;
+    will-change: transform;
+  }
+
+  .eye-backer, .eye-pupil, .eye-art{
+    position:absolute; inset:0; width:100%; height:100%;
+    display:block; pointer-events:none; user-select:none;
+    -webkit-user-drag:none;
+  }
+  .eye-art{ z-index:4; }
+  .eye-backer{ z-index:1; }
+  .eye-pupil{ z-index:2; }
+
+  /* only the patch of the art around the lid ever changes, so it is painted
+     on a small canvas over the static background. canvas is 760x728 of the
+     910x1618 art, at (86, 452) */
+  .eye-lid{
+    position:absolute;
+    left:9.451%; top:27.936%;
+    width:83.516%; height:auto; aspect-ratio:760/728;
+    display:block; pointer-events:none;
+    z-index:4;
+  }
+
+  .eye-content{
+    position:absolute; inset:0; z-index:3;
+    display:flex; align-items:center; justify-content:center;
+    container-type: inline-size;
+  }
+
+  .reveal-answer{
+    font-family: 'Monthoers', Georgia, serif;
+    font-weight:600;
+    color: var(--charcoal);
+    line-height:1.15;
+    text-align:center;
+    /* font-size and max-width are set at runtime to fit The Eye's actual
+       visible window, not the card's outer rectangle -- see
+       fitAnswerTextSize() */
+  }
+
+  .reveal-answer .reveal-line{ margin:0.1em 0; }
+  .reveal-answer .reveal-big{ line-height:1.1; }
+
+  @media (prefers-reduced-motion: reduce){
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  /* ---- on-screen keyboard (touch devices): looks like the iPhone keyboard ---- */
+  #vkb{
+    --u:1px;
+    --kb-bg:#d1d4d9; --kb-key:#ffffff; --kb-spec:#abb0ba; --kb-txt:#000; --kb-shadow:#898a8d; --kb-hit:#abb0ba; --kb-hit-spec:#ffffff; --kb-shift-on:#ffffff; --kb-shift-ico:#000;
+    position:fixed; left:50%; bottom:0; width:min(100vw, 500px); transform:translate(-50%,100%);
+    background:var(--kb-bg); z-index:400;
+    padding:calc(var(--u)*8) calc(var(--u)*3) calc(env(safe-area-inset-bottom, 0px) + var(--u)*8);
+    font-family:-apple-system,'SF Pro Text',Inter,'Segoe UI',sans-serif; color:var(--kb-txt);
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+    visibility:hidden; transition:transform .22s cubic-bezier(.2,.8,.2,1), visibility 0s .22s;
+  }
+  #vkb.show{ transform:translate(-50%,0); visibility:visible; transition:transform .22s cubic-bezier(.2,.8,.2,1), visibility 0s; }
+  #vkb .vk-row{ display:flex; justify-content:center; gap:calc(var(--u)*6); margin-bottom:calc(var(--u)*11); }
+  #vkb .vk-row:last-child{ margin-bottom:0; }
+  #vkb .vk-key{
+    flex:1 1 0; min-width:0; max-width:calc(var(--u)*36); height:calc(var(--u)*42);
+    display:flex; align-items:center; justify-content:center;
+    background:var(--kb-key); border-radius:calc(var(--u)*5); box-shadow:0 1px 0 var(--kb-shadow);
+    font-size:calc(var(--u)*22); line-height:1;
+  }
+  #vkb .vk-key.num{ font-size:calc(var(--u)*21); }
+  #vkb .vk-key.spec{ background:var(--kb-spec); max-width:none; }
+  #vkb .vk-key.shift, #vkb .vk-key.back{ flex:1.35; }
+  #vkb .vk-key.punc{ flex:1.1; font-size:calc(var(--u)*22); }
+  #vkb .vk-key.space{ flex:6; max-width:none; font-size:calc(var(--u)*16); }
+  #vkb .vk-key.mode{ flex:1.3; font-size:calc(var(--u)*16); }
+  #vkb .vk-key.done{ flex:1.3; }
+  #vkb .vk-key.sym{ max-width:calc(var(--u)*46); font-size:calc(var(--u)*22); }
+  #vkb .vk-key.more{ flex:1.35; font-size:calc(var(--u)*15); }
+  #vkb .vk-key.back svg{ fill:none; stroke:var(--kb-txt); stroke-width:1.5; }
+  #vkb .vk-key.done svg{ fill:none; stroke:var(--kb-txt); stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+  #vkb .vk-key.hit{ background:var(--kb-hit); }
+  #vkb .vk-key.spec.hit{ background:var(--kb-hit-spec); }
+  #vkb .vk-key.shift.on, #vkb .vk-key.shift.lock{ background:var(--kb-shift-on); }
+  #vkb svg{ width:calc(var(--u)*22); height:calc(var(--u)*22); fill:var(--kb-txt); }
+  #vkb .vk-key.shift svg{ fill:none; stroke:var(--kb-txt); stroke-width:1.6; }
+  #vkb .vk-key.shift.on svg, #vkb .vk-key.shift.lock svg{ fill:var(--kb-shift-ico); stroke:var(--kb-shift-ico); }
+  #vkb .vk-key.shift.lock::after{ content:''; position:absolute; width:calc(var(--u)*12); height:2px; background:var(--kb-shift-ico); margin-top:calc(var(--u)*28); }
+  #vkb .vk-key{ position:relative; }
+  @media (prefers-color-scheme: dark){
+    #vkb{ --kb-bg:#222325; --kb-key:#636566; --kb-spec:#3f4042; --kb-txt:#fff; --kb-shadow:#0008; --kb-hit:#8a8c8e; --kb-hit-spec:#636566; --kb-shift-on:#d2d3d5; --kb-shift-ico:#000; }
+  }
+
+  /* Android look: rounded Material keys, no shadows, a round accent action key */
+  #vkb.android{
+    --kb-bg:#e9edf3; --kb-key:#ffffff; --kb-spec:#dde2ea; --kb-txt:#1f1f1f; --kb-shadow:transparent;
+    --kb-hit:#c9d0db; --kb-hit-spec:#ffffff; --kb-shift-on:#c2e7ff; --kb-shift-ico:#001d35; --kb-done:#c2e7ff; --kb-done-ico:#001d35;
+    font-family:'Roboto','Google Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+    padding:calc(var(--u)*10) calc(var(--u)*4) calc(env(safe-area-inset-bottom, 0px) + var(--u)*12);
+  }
+  #vkb.android .vk-row{ gap:calc(var(--u)*5); margin-bottom:calc(var(--u)*9); }
+  #vkb.android .vk-key{ height:calc(var(--u)*49); border-radius:calc(var(--u)*9); box-shadow:none; max-width:calc(var(--u)*38); font-size:calc(var(--u)*22); }
+  #vkb.android .vk-key.num{ font-size:calc(var(--u)*19); height:calc(var(--u)*44); }
+  #vkb.android .vk-key.sym{ max-width:calc(var(--u)*46); }
+  #vkb.android .vk-key.spec{ max-width:none; }
+  #vkb.android .vk-key.space{ border-radius:calc(var(--u)*24); font-size:0; max-width:none; }
+  #vkb.android .vk-key.more, #vkb.android .vk-key.mode{ white-space:nowrap; font-size:calc(var(--u)*14); }
+  #vkb.android .vk-key.done{ background:var(--kb-done); border-radius:calc(var(--u)*24); max-width:none; }
+  #vkb.android .vk-key.done svg{ stroke:var(--kb-done-ico); }
+  #vkb.android .vk-key.mode{ border-radius:calc(var(--u)*24); font-size:calc(var(--u)*15); }
+  #vkb.android .vk-key.shift svg, #vkb.android .vk-key.back svg{ stroke-width:1.7; }
+  @media (prefers-color-scheme: dark){
+    #vkb.android{ --kb-bg:#1e1f22; --kb-key:#3a3d41; --kb-spec:#2b2d31; --kb-txt:#e8eaed; --kb-hit:#5a5e64; --kb-hit-spec:#4a4d52; --kb-shift-on:#a8c7fa; --kb-shift-ico:#062e6f; --kb-done:#a8c7fa; --kb-done-ico:#062e6f; }
+  }
+/* guided demo coach (preview only), styled like the secret menu */
+#coachDim{position:fixed;inset:0;z-index:9000;background:rgba(20,24,23,.72);display:none;align-items:center;justify-content:center;padding:24px}
+#coachDim.show{display:flex}
+.coach-card,#coachPanel{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#EAE1C8;background:#41504F;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.coach-card{max-width:420px;width:100%;padding:26px 20px 20px;text-align:left}
+.coach-swatch{width:72px;height:72px;margin:4px 0 14px;border-radius:50%;background:#2563d6;border:2px solid #EAE1C8}
+#coachPanel{position:fixed;left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:420px;z-index:9001;padding:18px 20px 14px;display:none;bottom:12px}
+#coachPanel.show{display:block}
+.coach-title{font-size:1.05rem;font-weight:600;color:#fff;margin:0 0 8px}
+.coach-text{font-size:.95rem;line-height:1.45;margin:0}
+.coach-text b{font-weight:700;color:#fff}
+.coach-sub{font-size:.88rem;line-height:1.4;margin:8px 0 0;opacity:.85}
+.coach-warn{color:#FFC2B3;font-weight:600;opacity:1}
+.coach-target{margin:8px 0 0;font-size:.95rem;line-height:1.45;word-break:break-word}
+.coach-target .done{opacity:.4}
+.coach-target .todo{font-weight:700;color:#fff}
+.coach-target .bad{color:#FFC2B3;text-decoration:underline}
+.coach-count{margin-top:8px;font-size:.88rem;font-variant-numeric:tabular-nums;opacity:.85}
+.coach-row{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:14px}
+.coach-btn{font:inherit;font-weight:600;font-size:.95rem;padding:10px 18px;border-radius:8px;border:1px solid rgba(234,225,200,.5);background:none;color:#EAE1C8;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.coach-btn:hover{background:rgba(234,225,200,.08)}
+.coach-skip{font:inherit;font-size:.88rem;background:none;border:0;color:#EAE1C8;opacity:.7;text-decoration:underline;cursor:pointer;padding:8px 4px}
+#coachRing{position:fixed;z-index:8999;pointer-events:none;border:3px solid #EAE1C8;border-radius:18px;box-shadow:0 0 0 2px #41504F,0 0 18px 6px rgba(234,225,200,.55);display:none;animation:coachPulse 1.1s ease-in-out infinite}
+#coachRing.show{display:block}
+#coachRing .tag{position:absolute;top:-34px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#41504F;color:#EAE1C8;font:600 .8rem -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:4px 10px;border-radius:8px}
+@keyframes coachPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+#coachChip{position:fixed;left:12px;bottom:12px;z-index:9001;display:none;font:600 .88rem -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:8px 12px;border-radius:8px;border:1px solid rgba(234,225,200,.5);background:#41504F;color:#EAE1C8;cursor:pointer}
+#coachChip.show{display:block}
+@media (prefers-reduced-motion:reduce){#coachRing{animation:none}}
+
+</style>
+</head>
+<body>
+
+<button class="reset-btn" id="resetBtn" aria-label="Reset">
+  <span>RESET</span>
+</button>
+
+<div class="instructions-drawer" id="instructionsDrawer">
+  <img class="drawer-art" src="assets/drawer.png?v=4" alt="">
+  <p class="instructions-text">Ask The Eye a question,<br>
+  Poke The Eye for your answer.</p>
+  <button class="instructions-tab" id="instructionsTab" type="button" aria-label="Instructions">
+    <span>INSTRUCTIONS</span>
+  </button>
+</div>
+
+<div class="app">
+  <div class="eye-stage" id="eyeStage">
+    <img class="eye-backer" src="assets/eye-backer.png?v=4" alt="">
+    <div class="eye-look" id="eyeLook">
+      <img class="eye-pupil" id="eyePupil" src="assets/pupil.png?v=4" alt="">
+    </div>
+    <div class="eye-content" id="eyeContent"></div>
+    <img class="eye-art" src="assets/eye-bg.webp?v=5" alt="">
+    <canvas class="eye-lid" id="eyeLid" width="760" height="728"></canvas>
+    <img class="textbox-art" src="assets/textbox.png?v=4" alt="">
+    <textarea class="type-field question-pos" id="questionInput" rows="2" enterkeyhint="done" placeholder="Question"
+      autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"
+      enterkeyhint="done" aria-label="Question"></textarea>
+    <button class="zit-btn" id="zitBtn" type="button" tabindex="-1" aria-label=""></button>
+  </div>
+</div>
+
+<div class="secret-overlay" id="secretOverlay">
+  <div class="secret-panel">
+    <button class="secret-close" id="secretClose" type="button" aria-label="Close">&times;</button>
+    <div id="secretMain">
+    <h2>How this actually works</h2>
+    <ol>
+      <li><strong>Tap the zit.</strong> It's the bump above and to the right of The Eye. Nothing will appear to happen.</li>
+      <li><strong>Tap the question box and type the secret.</strong> The box spells &ldquo;Can you guess what they are thinking?&rdquo; no matter what you type. You have 37 characters.</li>
+      <li><strong>Tap the zit again, or double-tap the space bar.</strong> Either one locks the secret in.</li>
+      <li><strong>Finish the question.</strong> Type whatever you like to end the question.</li>
+      <li><strong>Backspace counts as a keystroke.</strong> It deletes a letter from the secret, but the sentence keeps spelling forward.</li>
+    </ol>
+    <button class="secret-deeper" id="secretDeeper" type="button">Dig deeper</button>
+    <a class="secret-deeper secret-watch" href="https://youtube.com/shorts/FALh6jvvJWU" target="_blank" rel="noopener noreferrer">Watch the tutorial</a>
+    <div class="secret-links">
+      <a class="secret-coffee" href="https://www.paypal.com/qrcodes/venmocs/d4c45dc4-b8a7-4582-be68-4916acf2c9b8?amount=5.00&amp;currency_code=USD&amp;created=1791899438.6351418" target="_blank" rel="noopener noreferrer" aria-label="Buy me a coffee">
+        <img src="assets/tip-mug.png?v=1" srcset="assets/tip-mug.png?v=1 1x, assets/tip-mug@2x.png?v=1 2x" width="160" height="154" alt="">
+        <span>Buy me a coffee</span>
+      </a>
+      <a class="secret-insta" href="https://www.instagram.com/the_eye_knows_all" target="_blank" rel="noopener noreferrer">Instagram: @the_eye_knows_all</a>
+      <a class="secret-insta" href="https://www.instagram.com/joshua_stacy_up_close" target="_blank" rel="noopener noreferrer">Instagram: @joshua_stacy_up_close</a>
+    </div>
+    </div>
+    <div id="secretDeep" hidden>
+      <button class="secret-back" id="secretBack" type="button">&larr; Back</button>
+      <h2>Dig deeper</h2>
+      <details class="deep-sec" open>
+        <summary>Numbers</summary>
+        <p>This is useful for anyone whose phone keyboard separates the number and letter keys. Switching to numbers while seemingly typing a question could look suspicious if noticed.</p>
+        <p>Simply spell out any number between 0-100. If you type &ldquo;twelve&rdquo;, The Eye shows 12. If you type &ldquo;seventy five&rdquo; or &ldquo;seventyfive&rdquo; The Eye will show 75. Don&rsquo;t worry about misspelling a number, The Eye knows all.</p>
+      </details>
+      <details class="deep-sec">
+        <summary>Sentence answers</summary>
+        <p>If you enter a secret and your question contains one of these category words, The Eye answers in a full sentence that is relevant to that category.</p>
+        <p class="deep-cats">Name, Number, Color, Month, Day,<br>Animal, City, Food, Year, Card</p>
+        <p>Examples:</p>
+        <ul>
+          <li>Can you guess what name they are thinking of?</li>
+          <li>Can you guess what color Whitney is picturing?</li>
+          <li>Can you guess Rusty&rsquo;s favorite animal?</li>
+        </ul>
+        <p><strong>Year</strong></p>
+        <p>This one is also useful for anyone whose phone keyboard separates the number and letter keys.</p>
+        <p>Simply spell out the last two digits of whatever year you want The Eye to guess within the past 100 years. Spell a number lower than the current year&rsquo;s last two digits and The Eye guesses that year from the 2000&rsquo;s, so &ldquo;thirteen&rdquo; shows 2013. Anything higher gives the 1900s, so &ldquo;seventy five&rdquo; shows 1975.</p>
+        <p><strong>Card</strong></p>
+        <p>For Card, type the rank and the suit of the card you want The Eye to guess. For the ace of hearts type &ldquo;a h&rdquo;, for the seven of clubs type &ldquo;seven c&rdquo;, jack of diamonds type &ldquo;j d&rdquo;, for the ten of spades type &ldquo;ten s&rdquo;.</p>
+        <p>Single letters work for the suit (h, d, c, s) and for face cards (a, j, q, k), so &ldquo;k h&rdquo; is the King of Hearts. The Eye answers with the rank and the suit&rsquo;s symbol, like 7 &clubs; or Queen &diams;.</p>
+      </details>
+      <details class="deep-sec">
+        <summary>Yes/no questions</summary>
+        <p>If you don&rsquo;t enter a secret and ask a yes/no question, The Eye answers like a magic 8-ball.</p>
+      </details>
+      <details class="deep-sec">
+        <summary>Everything else</summary>
+        <p>If you don&rsquo;t enter a secret and the question isn&rsquo;t yes/no, The Eye gives one of its stock phrases.</p>
+      </details>
+      <details class="deep-sec">
+        <summary>The zit</summary>
+        <ul>
+          <li>Tap the zit before you type the secret.</li>
+          <li>Tap the zit again, or double-tap the space bar, to lock the secret in.</li>
+        </ul>
+      </details>
+      <details class="deep-sec">
+        <summary>Add to your home screen</summary>
+        <p>Add the web app to your home page to access The Eye anytime you want!</p>
+        <p><strong>iPhone (Safari):</strong> tap Share, then Add to Home Screen, then Add.</p>
+        <p><strong>Android (Chrome):</strong> tap the three-dot menu, then Add to Home screen (or Install app), then Add.</p>
+      </details>
+    </div>
+  </div>
+</div>
+
+<div id="coachDim"><div class="coach-card" id="coachCard"></div></div>
+<div id="coachRing"><span class="tag" id="coachTag"></span></div>
+<div id="coachPanel" role="dialog" aria-live="polite"></div>
+<button id="coachChip" type="button">Restart demo</button>
+
+<div id="vkb" aria-hidden="true"></div>
+<script>
+(function(){
+  "use strict";
+
+  var eyeStage = document.getElementById('eyeStage');
+  var eyeLid = document.getElementById('eyeLid');
+  var lidCtx = eyeLid.getContext('2d');
+  var eyeLook = document.getElementById('eyeLook');
+  var eyePupil = document.getElementById('eyePupil');
+  var eyeContent = document.getElementById('eyeContent');
+  var resetBtn = document.getElementById('resetBtn');
+  var questionInput = document.getElementById('questionInput');
+  var zitBtn = document.getElementById('zitBtn');
+  var instructionsDrawer = document.getElementById('instructionsDrawer');
+  var instructionsTab = document.getElementById('instructionsTab');
+  var secretOverlay = document.getElementById('secretOverlay');
+  var secretClose = document.getElementById('secretClose');
+
+  // bump this whenever any image changes, so browsers fetch the new files
+  // instead of showing cached old ones
+  var ASSET_V = '4';
+  var LID_W = 760, LID_H = 728;
+
+  // ------------------------------------------------------------
+  // The Eye is played from preloaded frames: a static full-screen
+  // background plus a small canvas that paints only the patch around the
+  // lid. every step of every animation is driven by the frames
+  // themselves, never by guessing when an image file has arrived.
+  // ------------------------------------------------------------
+  var FRAME_MS = 90;
+  var OPEN_FRAME = 0;     // resting pose
+  var CLOSED_A = 4;       // the closing run ends here, fully shut
+  var CLOSED_B = 5;       // second shut shape; the opening run picks up after it
+  var LAST_FRAME = 11;    // last frame of a blink or opening; matches the resting pose
+  // frame number -> file number. frame 6 is identical to frame 5 and reuses its file
+  var FRAME_FILES = [0, 1, 2, 3, 4, 5, 5, 7, 8, 9, 10, 11];
+  var REVEAL_HOLD_MS = 5000;                 // how long The Eye stays shut before the reveal
+  var CONCENTRATE_FLICKER_MS = 3 * FRAME_MS; // ~270ms per swap while "concentrating"
+
+  // the fixed filler phrase. this is what silently plays out on screen,
+  // one character per real keystroke, while the zit is active and the
+  // operator's real typing is being captured as the secret answer instead.
+  // once the zit is tapped a second time, capture mode ends and whatever
+  // the operator types from then on appears normally, appended after this,
+  // finishing the question however they like in the moment.
+  var FILLER = 'Can you guess what they are thinking?';
+
+
+  // ============================================================
+  // state
+  // ============================================================
+  var state = { busy:false, revealed:false, holding:false };
+
+  function freshCapture(){
+    return { active:false, locked:false, fillerPos:0, buffer:'', shown:'', comp:'', lastSpace:0 };
+  }
+  var capture = freshCapture();
+  window.__eye = { cap: function(){ return capture; } };
+  // true once a question has been answered: its text stays in the box, but it
+  // is spent. a poke only blinks, and the text clears when the box is tapped
+  var questionSpent = false;
+  questionInput.addEventListener('focus', function(){
+    if (!questionSpent) return;
+    questionSpent = false;
+    questionInput.value = '';
+    // a zit tap made before this keeps the secret entry armed; just restart the filler
+    capture.fillerPos = 0;
+    capture.shown = '';
+  });
+
+  // ============================================================
+  // the question field: normal typing by default. the zit flips it
+  // into capture mode, where real keystrokes are hidden in `capture.buffer`
+  // and the visible text instead advances through FILLER.
+  // ============================================================
+  function advanceFiller(){
+    if (capture.fillerPos < FILLER.length){
+      questionInput.value += FILLER[capture.fillerPos];
+      capture.fillerPos += 1;
+    }
+    capture.shown = questionInput.value;
+    // filler exhausted: nothing further shows, but the keystroke that got
+    // us here has already been logged into capture.buffer by the caller
+  }
+
+  // the enter / done key never makes a new line: it just closes the keyboard
+  // and leaves the field. (some Android keyboards skip keydown, so the
+  // line-break input event is caught as well)
+  questionInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter'){ e.preventDefault(); questionInput.blur(); }
+  });
+
+  // double-space lock, shared by the native and the on-screen keyboard
+  var DOUBLE_SPACE_MS = 600;
+  function isDoubleSpace(text){
+    var now = Date.now();
+    var hasSecret = capture.buffer.replace(/\s+/g, '').length > 0;
+    if (!hasSecret){ capture.lastSpace = (text === ' ') ? now : 0; return false; }
+    if (text === '. ' || text === '.\u00a0') return true; // iOS turns the pair into this
+    if (text === ' '){
+      var fast = capture.lastSpace && (now - capture.lastSpace) < DOUBLE_SPACE_MS;
+      if (fast && /\s$/.test(capture.buffer)) return true;
+      capture.lastSpace = now;
+      return false;
+    }
+    capture.lastSpace = 0;
+    return false;
+  }
+  function lockByDoubleSpace(){
+    if (/\s$/.test(capture.buffer)) capture.buffer = capture.buffer.replace(/\s+$/, '');
+    advanceFiller(); // still a keystroke as far as the visible text goes
+    capture.active = false;
+    if (capture.buffer.length > 0) capture.locked = true;
+    capture.lastSpace = 0;
+  }
+
+  questionInput.addEventListener('beforeinput', function(e){
+    if (e.inputType === 'insertLineBreak' || e.inputType === 'insertParagraph'){
+      e.preventDefault(); questionInput.blur(); return;
+    }
+    if (!capture.active) return; // normal mode: let the browser do its thing
+
+    // Android keyboards send composition events the page cannot cancel. those
+    // are left to the input-event backup below, so nothing is counted twice
+    if (!e.cancelable) return;
+    e.preventDefault();
+
+    if (e.inputType === 'insertText' || e.inputType === 'insertReplacementText' || e.inputType === 'insertFromPaste'){
+      var text = e.data || '';
+      // the final commit of a word already counted while it was composed
+      if (capture.comp && text === capture.comp){ capture.comp = ''; return; }
+      capture.comp = '';
+      // a double space locks the secret, like the second zit tap. the iPhone's
+      // own double-space shortcut arrives as '. ', which counts the same
+      if (isDoubleSpace(text)){ lockByDoubleSpace(); return; }
+      for (var i = 0; i < text.length; i++){
+        capture.buffer += text[i];
+        advanceFiller();
+      }
+    } else if (e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward'){
+      // backspace also counts as a keystroke: it removes from the hidden
+      // answer, but the visible filler still only ever moves forward
+      capture.buffer = capture.buffer.slice(0, -1);
+      advanceFiller();
+    }
+    // anything else (line breaks, IME composition, etc.) is simply ignored
+  });
+
+  // backup for keyboards whose edits cannot be blocked (Android composition).
+  // whatever actually landed in the field is compared with what was last
+  // shown: new letters go into the hidden answer, removed letters count as
+  // backspaces, and the field is put back to the filler phrase
+  questionInput.addEventListener('input', function(ev){
+    if (!capture.active) return;
+    var now = questionInput.value;
+    var before = capture.shown;
+    if (now === before) return;
+    var pre = 0;
+    var maxPre = Math.min(before.length, now.length);
+    while (pre < maxPre && before.charAt(pre) === now.charAt(pre)) pre++;
+    var suf = 0;
+    var maxSuf = Math.min(before.length, now.length) - pre;
+    while (suf < maxSuf && before.charAt(before.length - 1 - suf) === now.charAt(now.length - 1 - suf)) suf++;
+    var removed = before.length - pre - suf;
+    var added = now.slice(pre, now.length - suf).replace(/[\r\n]/g, '');
+    questionInput.value = before;
+    var i;
+    for (i = 0; i < removed; i++){
+      capture.buffer = capture.buffer.slice(0, -1);
+      advanceFiller();
+    }
+    // a word being composed arrives again, longer, with every keystroke:
+    // only the new part counts. a changed word replaces what was counted
+    var composing = ev.isComposing || /composition/i.test(ev.inputType || '');
+    if (capture.comp && removed === 0){
+      if (added.indexOf(capture.comp) === 0){
+        var rest = added.slice(capture.comp.length);
+        capture.comp = composing ? added : '';
+        added = rest;
+      } else if (composing){
+        capture.buffer = capture.buffer.slice(0, capture.buffer.length - capture.comp.length);
+        capture.comp = added;
+      } else {
+        capture.comp = '';
+      }
+    } else {
+      capture.comp = composing ? added : '';
+    }
+    for (i = 0; i < added.length; i++){
+      capture.buffer += added.charAt(i);
+      advanceFiller();
+    }
+    capture.shown = questionInput.value;
+    try { questionInput.setSelectionRange(questionInput.value.length, questionInput.value.length); } catch (e){}
+  });
+
+  questionInput.addEventListener('compositionend', function(){ capture.comp = ''; });
+
+  // don't let a tap into the field also register as a tap on The Eye
+  questionInput.addEventListener('click', function(e){ e.stopPropagation(); });
+
+  // ============================================================
+  // the zit: a strict one-shot toggle.
+  // tap 1: enter capture mode.
+  // tap 2: exit capture mode. if anything was actually captured, the zit
+  //        locks forever. if nothing was captured, it stays live so the
+  //        operator gets another chance.
+  // ============================================================
+  // the zit must never take keyboard focus away from whatever field the
+  // operator is mid-sentence in -- otherwise tapping it dismisses the
+  // on-screen keyboard and kills capture mode along with it. preventing
+  // default on mousedown (the standard, well-proven trick for this) stops
+  // the focus steal; the actual toggle runs on plain "click", which is
+  // the one event type iOS Safari reliably fires for a tap like this.
+  // (note: this must stay mousedown-only -- preventDefault on touchstart
+  // cancels the synthetic mousedown/click chain entirely on iOS Safari)
+  zitBtn.addEventListener('mousedown', function(e){ e.preventDefault(); });
+
+  zitBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    if (capture.locked) return;
+
+    if (!capture.active){
+      capture.active = true;
+      // pick up wherever the visible question text already is, so the
+      // operator can start typing the phrase manually and trigger the
+      // zit at any point
+      capture.fillerPos = questionSpent ? 0 : Math.min(questionInput.value.length, FILLER.length);
+      capture.shown = questionInput.value;
+    } else {
+      capture.active = false;
+      if (capture.buffer.length > 0){
+        capture.locked = true;
+      }
+    }
+  });
+
+  // ============================================================
+  // on-screen keyboard. on touch devices the phone's own keyboard is not
+  // used at all (inputmode=none): this keyboard feeds the same hidden-secret
+  // logic directly, so no keyboard quirks, autocorrect or composition can get
+  // in the way, and digits and the period sit on the same page as the letters.
+  // a physical keyboard (desktop) still works through the field as before.
+  // pressing the period while the secret entry is armed locks the secret,
+  // exactly like the second zit tap.
+  // ============================================================
+  // iPhone and iPad keep Apple's own keyboard (it works well there). every
+  // other touch device gets this keyboard, because Android keyboards run
+  // predictive text and composition that interfere with the hidden entry.
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var useVK = !isIOS && !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+  var vk = document.getElementById('vkb');
+  if (useVK && vk){
+    questionInput.setAttribute('inputmode', 'none');
+    vk.classList.add('android');
+    var vkShift = 0;     // 0 off, 1 on (one letter), 2 caps lock
+    var vkLastShiftTap = 0;
+    var vkPage = 'abc';  // abc | sym1 | sym2
+    var vkLetterEls = [];
+    var vkShiftEl = null;
+    var vkRepeatDelay = null, vkRepeatTimer = null;
+
+    var ICON_SHIFT = '<svg viewBox="0 0 24 24"><path d="M12 3.5 3 13.2h5.2v6.3h7.6v-6.3H21z"/></svg>';
+    var ICON_BACK = '<svg viewBox="0 0 24 24"><path d="M8.5 5.5h11a1.8 1.8 0 0 1 1.8 1.8v9.4a1.8 1.8 0 0 1-1.8 1.8h-11L2.6 12z" /><path d="m11.6 9.4 5.2 5.2m0-5.2-5.2 5.2" /></svg>';
+    var ICON_DONE = '<svg viewBox="0 0 24 24"><path d="m5 12.8 4.6 4.6L19 7.2"/></svg>';
+
+    function vkAutoShift(){
+      var v = questionInput.value;
+      return v.length === 0 || /[.?!]\s+$/.test(v);
+    }
+    function vkRenderCase(){
+      var up = vkShift > 0;
+      for (var i = 0; i < vkLetterEls.length; i++){
+        var e = vkLetterEls[i];
+        e.textContent = up ? e.getAttribute('data-ch').toUpperCase() : e.getAttribute('data-ch');
+      }
+      if (vkShiftEl){
+        vkShiftEl.classList.toggle('on', vkShift === 1);
+        vkShiftEl.classList.toggle('lock', vkShift === 2);
+      }
+    }
+    function vkAfterKey(){
+      if (vkPage !== 'abc') return;
+      if (vkShift === 1) vkShift = 0;
+      if (vkShift === 0 && vkAutoShift()) vkShift = 1;
+      vkRenderCase();
+    }
+    function vkScroll(){ questionInput.scrollTop = questionInput.scrollHeight; }
+
+    // one keystroke into the question field, honoring the hidden secret entry
+    function vkInsert(ch){
+      if (capture.active && isDoubleSpace(ch)){
+        lockByDoubleSpace(); vkScroll(); return;
+      }
+      if (capture.active && ch === '.' && capture.buffer.length > 0){
+        // the period locks the secret. it is a keystroke like any other, so
+        // the visible text still advances, but it never joins the secret
+        advanceFiller();
+        capture.active = false;
+        capture.locked = true;
+      } else if (capture.active){
+        capture.buffer += ch;
+        advanceFiller();
+      } else {
+        questionInput.value += ch;
+      }
+      vkScroll();
+    }
+    function vkBackspace(){
+      if (capture.active){
+        capture.buffer = capture.buffer.slice(0, -1);
+        advanceFiller();
+      } else {
+        questionInput.value = questionInput.value.slice(0, -1);
+      }
+      vkScroll();
+    }
+
+    function vkRow(extra){
+      var r = document.createElement('div'); r.className = 'vk-row';
+      if (extra) r.style.cssText = extra;
+      vk.appendChild(r); return r;
+    }
+    function vkKey(row, label, cls, press, isBack){
+      var el = document.createElement('div');
+      el.className = 'vk-key' + (cls ? ' ' + cls : '');
+      if (label.charAt(0) === '<') el.innerHTML = label; else el.textContent = label;
+      el._vkPress = press; el._vkBack = !!isBack;
+      row.appendChild(el);
+      return el;
+    }
+    function vkCharKey(row, ch, cls){
+      var isLetter = /^[a-z]$/.test(ch);
+      var el = vkKey(row, ch, cls, function(){
+        var out = ch;
+        if (isLetter && vkShift > 0) out = ch.toUpperCase();
+        vkInsert(out);
+        vkAfterKey();
+      });
+      if (isLetter){ el.setAttribute('data-ch', ch); vkLetterEls.push(el); }
+      return el;
+    }
+    function vkGo(page){ vkPage = page; vkBuild(); }
+
+    function vkBottomRow(modeLabel, modePage){
+      var r = vkRow();
+      vkKey(r, modeLabel, 'spec mode', function(){ vkGo(modePage); });
+      vkCharKey(r, '?', 'spec punc');
+      vkCharKey(r, ' ', 'space').textContent = 'space';
+      vkCharKey(r, '.', 'spec punc');
+      vkKey(r, ICON_DONE, 'spec done', function(){ questionInput.blur(); });
+    }
+    function vkBuild(){
+      vkStopRepeat();
+      vk.innerHTML = ''; vkLetterEls = []; vkShiftEl = null;
+      var r1 = vkRow();
+      '1234567890'.split('').forEach(function(d){ vkCharKey(r1, d, 'num'); });
+      if (vkPage === 'abc'){
+        var r2 = vkRow();
+        'qwertyuiop'.split('').forEach(function(d){ vkCharKey(r2, d, ''); });
+        var r3 = vkRow('padding:0 calc(var(--u)*20)');
+        'asdfghjkl'.split('').forEach(function(d){ vkCharKey(r3, d, ''); });
+        var r4 = vkRow();
+        vkShiftEl = vkKey(r4, ICON_SHIFT, 'spec shift', function(){
+          var now = Date.now();
+          if (vkShift === 2) vkShift = 0;
+          else if (now - vkLastShiftTap < 350) vkShift = 2;
+          else vkShift = vkShift === 1 ? 0 : 1;
+          vkLastShiftTap = now;
+          vkRenderCase();
+        });
+        'zxcvbnm'.split('').forEach(function(d){ vkCharKey(r4, d, ''); });
+        vkKey(r4, ICON_BACK, 'spec back', function(){ vkBackspace(); vkAfterKey(); }, true);
+        vkBottomRow('?123', 'sym1');
+      } else {
+        var r2s = vkRow();
+        (vkPage === 'sym1' ? '-/:;()$&@"' : '[]{}#%^*+=').split('').forEach(function(d){ vkCharKey(r2s, d, 'sym'); });
+        var r3s = vkRow();
+        vkKey(r3s, vkPage === 'sym1' ? '=\\<' : '?123', 'spec more', function(){ vkGo(vkPage === 'sym1' ? 'sym2' : 'sym1'); });
+        (vkPage === 'sym1' ? ".,?!'" : '_\\|~<>€£').split('').forEach(function(d){ vkCharKey(r3s, d, 'sym'); });
+        vkKey(r3s, ICON_BACK, 'spec back more', function(){ vkBackspace(); vkAfterKey(); }, true);
+        vkBottomRow('ABC', 'abc');
+      }
+      vkRenderCase();
+    }
+
+    // key feedback: a small buzz where the vibration API exists (Android).
+    // iPhone gives no web page access to haptics, and there are no sounds.
+    function vkHaptic(){
+      if (navigator.vibrate){ try { navigator.vibrate(8); } catch (err){} }
+    }
+
+    function vkSize(){
+      var w = Math.min(window.innerWidth, 500);
+      vk.style.setProperty('--u', (w / 390) + 'px');
+    }
+    vkSize();
+    window.addEventListener('resize', vkSize);
+
+    function vkStopRepeat(){
+      if (vkRepeatDelay){ clearTimeout(vkRepeatDelay); vkRepeatDelay = null; }
+      if (vkRepeatTimer){ clearInterval(vkRepeatTimer); vkRepeatTimer = null; }
+    }
+    vk.addEventListener('pointerdown', function(e){
+      e.preventDefault(); // never take focus from the field
+      var t = e.target.closest ? e.target.closest('.vk-key') : null;
+      if (!t || !t._vkPress) return;
+      t.classList.add('hit');
+      setTimeout(function(){ t.classList.remove('hit'); }, 110);
+      vkHaptic();
+      t._vkPress();
+      if (t._vkBack){
+        vkStopRepeat();
+        vkRepeatDelay = setTimeout(function(){
+          vkRepeatTimer = setInterval(function(){ vkHaptic(); vkBackspace(); vkAfterKey(); }, 75);
+        }, 420);
+      }
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function(n){ vk.addEventListener(n, vkStopRepeat); });
+    vk.addEventListener('touchstart', function(e){ e.preventDefault(); }, { passive:false });
+    vk.addEventListener('mousedown', function(e){ e.preventDefault(); });
+
+    questionInput.addEventListener('focus', function(){
+      vkPage = 'abc'; vkShift = vkAutoShift() ? 1 : 0; vkBuild();
+      vk.classList.add('show'); vk.setAttribute('aria-hidden', 'false');
+    });
+    questionInput.addEventListener('blur', function(){
+      vkStopRepeat();
+      vk.classList.remove('show'); vk.setAttribute('aria-hidden', 'true');
+    });
+    vkBuild();
+  }
+
+  // ============================================================
+  // resting state: the pupil sits in The Eye from the very start (and
+  // again after reset), with nothing in eyeContent. it's hidden for the
+  // reveal and stays hidden once an answer is showing.
+  // ============================================================
+  function showPupil(){
+    eyeContent.innerHTML = '';
+    eyePupil.style.visibility = 'visible';
+  }
+  function hidePupil(){
+    eyePupil.style.visibility = 'hidden';
+  }
+
+  // ============================================================
+  // number words -> numerals (0 to 100). only an entry that is entirely a
+  // number in words is converted ("twelve" -> "12"); anything else is shown
+  // exactly as typed. handles hyphen / space / run-together forms and common
+  // misspellings. a typo that could be two different numbers is left alone
+  // rather than guessed.
+  // ============================================================
+  var NUM_WORDS = {
+    zero:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9,
+    ten:10, eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15, sixteen:16,
+    seventeen:17, eighteen:18, nineteen:19,
+    twenty:20, thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90
+  };
+  var NUM_ALIASES = {
+    // known misspellings, exact
+    fourty:'forty', fortey:'forty', forty:'forty', fourtey:'forty', ninty:'ninety', nintey:'ninety',
+    ninetey:'ninety', eigth:'eight', eigtht:'eight', eigthy:'eighty', eigty:'eighty', eightey:'eighty',
+    egiht:'eight', fiftey:'fifty', fivty:'fifty', fifthy:'fifty', sixtey:'sixty', thirtey:'thirty',
+    thrity:'thirty', twentey:'twenty', twenny:'twenty', twinty:'twenty', tweny:'twenty', twelfe:'twelve',
+    tweleve:'twelve', twleve:'twelve', twelv:'twelve', elaven:'eleven', elevin:'eleven', eleaven:'eleven',
+    forteen:'fourteen', fourtean:'fourteen', fourtene:'fourteen', fiveteen:'fifteen', fifthteen:'fifteen',
+    fiftene:'fifteen', fifteeen:'fifteen', sixtean:'sixteen', sixtene:'sixteen', seventeen:'seventeen',
+    seventean:'seventeen', sevnteen:'seventeen', eightteen:'eighteen', eigthteen:'eighteen', eightene:'eighteen',
+    ninteen:'nineteen', nineten:'nineteen', ninetene:'nineteen', thirten:'thirteen', thirtene:'thirteen',
+    thriteen:'thirteen', sevin:'seven', sevan:'seven', sevven:'seven', thre:'three', thrree:'three',
+    fiv:'five', nien:'nine', nin:'nine', ninee:'nine', ate:'', too:'', tow:'', won:'', for:'', to:''
+  };
+  // single-word aliases that are also plain English words are deliberately
+  // blank above, so they never become numbers
+  var TENS = { twenty:1, thirty:1, forty:1, fifty:1, sixty:1, seventy:1, eighty:1, ninety:1 };
+
+  function editDistance(a, b){
+    // optimal string alignment (counts a swapped pair of letters as one slip)
+    var d = [], i, j;
+    for (i = 0; i <= a.length; i++){ d[i] = [i]; }
+    for (j = 1; j <= b.length; j++){ d[0][j] = j; }
+    for (i = 1; i <= a.length; i++){
+      for (j = 1; j <= b.length; j++){
+        var cost = a[i-1] === b[j-1] ? 0 : 1;
+        d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + cost);
+        if (i > 1 && j > 1 && a[i-1] === b[j-2] && a[i-2] === b[j-1]){
+          d[i][j] = Math.min(d[i][j], d[i-2][j-2] + 1);
+        }
+      }
+    }
+    return d[a.length][b.length];
+  }
+
+  // returns the canonical number word for one typed word, or '' if none
+  function canonicalNumberWord(w){
+    if (Object.prototype.hasOwnProperty.call(NUM_WORDS, w)) return w;
+    if (Object.prototype.hasOwnProperty.call(NUM_ALIASES, w)) return NUM_ALIASES[w];
+    if (w.length < 5) return ''; // too short to guess at safely
+    var best = '', bestD = 99, tie = false;
+    Object.keys(NUM_WORDS).forEach(function(k){
+      if (k.length < 5) return;
+      var dist = editDistance(w, k);
+      if (dist < bestD){ bestD = dist; best = k; tie = false; }
+      else if (dist === bestD){ tie = true; }
+    });
+    return (bestD <= 1 && !tie) ? best : '';
+  }
+
+  function wordsToNumber(raw){
+    var s = String(raw || '').toLowerCase().replace(/[‐-―-]/g, ' ');
+    s = s.replace(/^[\s.,!?;:'"]+|[\s.,!?;:'"]+$/g, '').replace(/\s+/g, ' ');
+    if (!s || /[^a-z ]/.test(s)) return null;
+    var parts = s.split(' ');
+
+    // 100
+    if (parts.length <= 2){
+      var h = parts.join(' ');
+      if (h === 'hundred' || h === 'a hundred' || h === 'one hundred' || h === 'hunderd' ||
+          h === 'one hunderd' || h === 'a hunderd' || h === 'hundered' || h === 'one hundered') return 100;
+    }
+
+    var words = parts.map(canonicalNumberWord);
+    if (words.indexOf('') !== -1){
+      // maybe one run-together token like "twentyone"
+      if (parts.length !== 1) return null;
+      var t = parts[0], found = null, count = 0;
+      for (var i = 3; i <= t.length - 3; i++){
+        var L = canonicalNumberWord(t.slice(0, i)), R = canonicalNumberWord(t.slice(i));
+        if (L && R && TENS[L] && NUM_WORDS[R] >= 1 && NUM_WORDS[R] <= 9){
+          var v = NUM_WORDS[L] + NUM_WORDS[R];
+          if (found !== v){ found = v; count++; }
+        }
+      }
+      return count === 1 ? found : null;
+    }
+    if (words.length === 1) return NUM_WORDS[words[0]];
+    if (words.length === 2 && TENS[words[0]] && NUM_WORDS[words[1]] >= 1 && NUM_WORDS[words[1]] <= 9){
+      return NUM_WORDS[words[0]] + NUM_WORDS[words[1]];
+    }
+    return null;
+  }
+
+  // what the reveal should show for a secret entry
+  function secretToDisplay(secret){
+    if (/^\d+$/.test(secret)) return secret; // digits typed straight in show as typed
+    var n = wordsToNumber(secret);
+    return n === null ? secret : n.toLocaleString('en-US');
+  }
+
+  // shown instead of an answer when nothing was ever secretly captured.
+  // which list is used depends on how much effort the typed-out question
+  // shows (by word count); each list cycles independently, in order,
+  // remembering its place across reloads via localStorage (falls back to
+  // an in-memory counter per list if storage isn't available)
+  var FAILURE_PHRASES_FULL = [
+    'Such a question deserves no answer.',
+    'I see no truth worth answering here.',
+    'That question holds no weight.',
+    'You ask, but you do not truly wish to know.',
+    'Empty words earn empty silence.',
+    'A hollow question meets a hollow eye.',
+    'I will not answer what you do not mean.',
+    'Your question rings false.',
+    'There is nothing here worth revealing.',
+    "A careless question buys nothing."
+  ];
+  var FAILURE_PHRASES_THIN = [
+    'You call that a question? Ask again, and mean it.',
+    'Too few words to carry truth.',
+    'Is that truly all you wished to ask?',
+    'You rushed your question. I noticed.',
+    'Such haste earns silence.',
+    'A question demands thought. Yours had none.',
+    'You barely tried, and it shows.',
+    'Half a question earns half an answer, which is none.',
+    'Your question carries no weight, only haste.',
+    'You spoke without care, and I heard it.'
+  ];
+  // ------------------------------------------------------------
+  // yes/no questions with no secret entered: The Eye answers like an
+  // 8-ball. 10 yes, 5 "ask again" (always the asker's fault, never the
+  // eye's), 5 no. picked at random, never the same one twice in a row.
+  // ------------------------------------------------------------
+  var EIGHT_BALL = [
+    'Without a doubt.', 'It is certain.', 'Yes, and you know it.', 'The signs are clear. Yes.',
+    'Most likely.', 'Yes.', 'You may rely on it.', 'The outlook is bright.',
+    'All paths lead to yes.', 'I have seen it. Yes.',
+    'Your question is clouded by doubt. Ask again.', 'You are not ready to hear it. Ask later.',
+    'Quiet your mind, then ask again.', 'You asked too quickly. Ask again.', 'Your thoughts are scattered. Ask again.',
+    'No.', 'Do not count on it.', 'The outlook is dark.', 'Very doubtful.', 'My sight says no.'
+  ];
+  var YESNO_STARTERS = {
+    is:1, are:1, am:1, was:1, were:1, do:1, does:1, did:1, will:1, would:1, shall:1, should:1,
+    can:1, could:1, may:1, might:1, must:1, have:1, has:1, had:1,
+    isnt:1, arent:1, wasnt:1, werent:1, dont:1, doesnt:1, didnt:1, wont:1, wouldnt:1, shouldnt:1,
+    cant:1, couldnt:1, havent:1, hasnt:1, hadnt:1
+  };
+  var QUESTION_WORDS = { what:1, who:1, whom:1, whose:1, when:1, where:1, why:1, how:1, which:1 };
+
+  // a yes/no question ends in "?", starts with a verb like is/do/will/can,
+  // and has no question word (what, who, how...) anywhere in it
+  function isYesNoQuestion(text){
+    var t = String(text || '').trim().toLowerCase().replace(/[\u2018\u2019']/g, '');
+    if (t.charAt(t.length - 1) !== '?') return false;
+    var words = t.replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
+    if (!words.length || !YESNO_STARTERS[words[0]]) return false;
+    for (var i = 0; i < words.length; i++){
+      if (QUESTION_WORDS[words[i]]) return false;
+    }
+    return true;
+  }
+
+  var lastEightBall = -1;
+  function nextEightBallAnswer(){
+    var i;
+    do { i = Math.floor(Math.random() * EIGHT_BALL.length); } while (i === lastEightBall);
+    lastEightBall = i;
+    return EIGHT_BALL[i];
+  }
+
+  var THIN_QUESTION_WORD_LIMIT = 6; // questions shorter than this count as thin
+
+  function makePhraseCycler(list, storageKey){
+    var fallback = 0;
+    return function(){
+      var i = 0;
+      try {
+        var stored = window.localStorage.getItem(storageKey);
+        i = stored === null ? 0 : parseInt(stored, 10);
+        if (isNaN(i)) i = 0;
+      } catch (e){
+        i = fallback;
+      }
+      i = ((i % list.length) + list.length) % list.length;
+      var phrase = list[i];
+      var next = (i + 1) % list.length;
+      try {
+        window.localStorage.setItem(storageKey, String(next));
+      } catch (e){
+        fallback = next;
+      }
+      return phrase;
+    };
+  }
+
+  var nextFullFailurePhrase = makePhraseCycler(FAILURE_PHRASES_FULL, 'peterEyeFailureIndexFull');
+  var nextThinFailurePhrase = makePhraseCycler(FAILURE_PHRASES_THIN, 'peterEyeFailureIndexThin');
+
+  function wordCount(str){
+    return str.trim().split(/\s+/).filter(Boolean).length;
+  }
+
+  // ============================================================
+  // the reveal: just the answer itself, already formed, centered in
+  // The Eye the moment it opens -- sized and wrapped to actually fit
+  // inside The Eye's visible window, not the card's outer rectangle
+  // ============================================================
+
+  // finds the largest font size (allowing wrapping) whose rendered block
+  // still fits inside a conservative box sized to The Eye's actual
+  // lens-shaped window -- so short answers stay big and single-line,
+  // and long ones wrap to two or three lines instead of shrinking to
+  // the smallest possible size
+  function fitAnswerTextSize(text, containerRect){
+    var maxWidthPx = containerRect.width * 0.40;
+    var maxHeightPx = containerRect.height * 0.20;
+    var maxFontPx = containerRect.width * 0.075;
+    var minFontPx = containerRect.width * 0.032;
+    var steps = 14;
+
+    var holder = document.createElement('div');
+    holder.style.position = 'absolute';
+    holder.style.visibility = 'hidden';
+    holder.style.left = '0';
+    holder.style.top = '0';
+    holder.style.width = maxWidthPx + 'px';
+    holder.style.fontFamily = "'Monthoers', Georgia, serif";
+    holder.style.fontWeight = '600';
+    holder.style.lineHeight = '1.15';
+    holder.style.textAlign = 'center';
+    holder.textContent = text;
+    eyeContent.appendChild(holder);
+
+    var chosen = minFontPx;
+    for (var i = 0; i <= steps; i++){
+      var fontPx = maxFontPx - (i / steps) * (maxFontPx - minFontPx);
+      holder.style.fontSize = fontPx + 'px';
+      if (holder.getBoundingClientRect().height <= maxHeightPx){
+        chosen = fontPx;
+        break;
+      }
+    }
+
+    eyeContent.removeChild(holder);
+    return { fontPx: chosen, maxWidthPx: maxWidthPx };
+  }
+
+  // ============================================================
+  // sentence answers: when there is a secret and the finished question
+  // mentions a category, a small lead-in and/or tail frames a large answer
+  // ============================================================
+  // [above, below]; null = no line there
+  var SENTENCE_TEMPLATES = {
+    name: [
+      ['I am sensing the name', null], [null, 'is the obvious choice'],
+      ['A name rises from your thoughts', null], ['Someone answers to the name', null],
+      ['Your mind keeps returning to', null]
+    ],
+    number: [
+      ['The number is', null], ['I counted the beats of your thought', null],
+      [null, 'the number you tried to hide'], ['The digits are clear', null],
+      ['Your number, without a doubt', null]
+    ],
+    color: [
+      ['I see the color', null], ['A color floods my vision', null],
+      [null, 'surrounds your thoughts'], ['The color of your mind is', null],
+      [null, 'there is no doubt']
+    ],
+    month: [
+      ['I see the calendar turn to', null], ['The month is', null],
+      [null, 'is circled in your mind'], ['The month that stands out is', null],
+      ['Time slows at the month of', null]
+    ],
+    day: [
+      ['The calendar settles on', null], ['The day is', null],
+      [null, 'is circled in your mind'], ['I see the day', null],
+      ['Your thoughts stop at', null]
+    ],
+    animal: [
+      ['A creature stirs in your mind', null], ['I hear it breathing', null],
+      [null, 'I see its eyes'], ['The animal in your mind is', null],
+      ['I sense the animal', null]
+    ],
+    city: [
+      ['In your mind, you are standing in', null], ['You are thinking of', null],
+      [null, 'pulls at your thoughts'], ['I see the streets of', null],
+      ['The city is', null]
+    ],
+    year: [
+      ['I see the year', null], ['Time rewinds to the year', null],
+      [null, 'is etched in your memory'], ['The year that stands out is', null],
+      ['Your mind drifts back to', null]
+    ],
+    food: [
+      ['I taste', null], ['I smell', null],
+      [null, 'is on your mind'], ['The food in your mind is', null],
+      ['Your hunger points to', null]
+    ]
+  };
+  SENTENCE_TEMPLATES.card = [
+    ['I see the card', null], ['Your card is', null],
+    [null, 'is burning in your mind'], ['The card you chose is', null],
+    ['The deck falls away, leaving only', null]
+  ];
+  var CATEGORY_PATTERNS = [
+    ['name', /\bnames?\b/], ['number', /\bnumbers?\b/], ['color', /\bcolou?rs?\b/],
+    ['month', /\bmonths?\b/], ['day', /\bdays?\b/], ['animal', /\banimals?\b/],
+    ['city', /\b(?:city|cities)\b/], ['food', /\bfoods?\b/], ['year', /\byear\b/], ['card', /\bcard\b/]
+  ];
+
+  // earliest keyword in the question wins
+  function detectCategory(question){
+    var q = (question || '').toLowerCase();
+    var best = null, bestIdx = Infinity;
+    for (var i = 0; i < CATEGORY_PATTERNS.length; i++){
+      var m = CATEGORY_PATTERNS[i][1].exec(q);
+      if (m && m.index < bestIdx){ bestIdx = m.index; best = CATEGORY_PATTERNS[i][0]; }
+    }
+    return best;
+  }
+
+
+  // ------------------------------------------------------------
+  // who the question is about. The Eye mirrors it: "my birth month" gets
+  // "Your birth month is...", "what color Gerald is thinking of" gets
+  // "The color of Gerald's mind is...". lines that name no person are
+  // left alone and stay in the mix for every question.
+  // ------------------------------------------------------------
+  var PERSONAL = {
+    name:   { 2: ['A name rises from {p} thoughts', null], 4: ['{P} mind keeps returning to', null] },
+    number: { 1: ['I counted the beats of {p} thought', null], 2: [null, 'the number {S} tried to hide'],
+              4: ['{P} number, without a doubt', null] },
+    color:  { 2: [null, 'surrounds {p} thoughts'], 3: ['The color of {p} mind is', null] },
+    month:  { 1: ['{P} {mod}month is', null], 2: [null, 'is circled in {p} mind'] },
+    day:    { 1: ['{P} {mod}day is', null], 2: [null, 'is circled in {p} mind'], 4: ['{P} thoughts stop at', null] },
+    animal: { 0: ['A creature stirs in {p} mind', null], 3: ['The animal in {p} mind is', null] },
+    city:   { 0: ['In {p} mind, {S} {be} standing in', null], 1: ['{S} {be} thinking of', null],
+              2: [null, 'pulls at {p} thoughts'] },
+    year:   { 2: [null, 'is etched in {p} memory'], 4: ['{P} mind drifts back to', null] },
+    food:   { 2: [null, 'is on {p} mind'], 3: ['The food in {p} mind is', null], 4: ['{P} hunger points to', null] },
+    card:   { 1: ['{P} card is', null], 2: [null, 'is burning in {p} mind'], 3: ['The card {S} chose is', null] }
+  };
+
+  var SUBJECT_VERBS = 'is|was|are|has|had|would|will|might|likes?|chose|choose|picked|pick|thinks?|thought|thinking|' +
+    'picturing|imagining|imagines?|holding|holds?|from|lives?|born|visited|visit|selected|wants?|loves?|ate|eats?|' +
+    'eating|come|comes|feeling|seeing|have';
+  var SUBJECT_STOP = {};
+  ('a an the this that these those it its he she they we you i me my your our their his her them him someone ' +
+   'somebody anyone anybody everyone everybody who what which there here and or so now today tonight one ' +
+   'person guy girl man woman not just still really always never this his its does was has yes as us is perhaps guess ' + 'boys girls guys people kids friends others ones things').split(' ').forEach(function(w){ SUBJECT_STOP[w] = 1; });
+  // names that really end in s, so a missing apostrophe isn't mistaken for one
+  var NAMES_ENDING_S = {};
+  ('james chris thomas lucas carlos louis marcus jesus jonas nicholas travis curtis dennis francis charles giles ' +
+   'agnes doris iris ross gus jess moses hughes silas elias tobias matthias andreas dallas ellis lewis willis ' +
+   'rhys reese reyes morris harris jones adams williams davis wilson thomas hans').split(' ').forEach(function(w){ NAMES_ENDING_S[w] = 1; });
+  var RELATIVES = 'friend wife husband mom mother dad father son daughter brother sister girlfriend boyfriend ' +
+    'partner buddy boss neighbor neighbour cousin uncle aunt grandma grandpa kid child baby'.split(' ');
+
+  function subjectFor(kind, name){
+    if (kind === 'you')  return { poss: 'your', sub: 'you', be: 'are' };
+    if (kind === 'he')   return { poss: 'his', sub: 'he', be: 'is' };
+    if (kind === 'she')  return { poss: 'her', sub: 'she', be: 'is' };
+    if (kind === 'they') return { poss: 'their', sub: 'they', be: 'are' };
+    var shown = capitalizeName(name);
+    return { poss: shown + (/s$/i.test(shown) ? "'" : "'s"), sub: shown, be: 'is' };
+  }
+
+  // returns { poss, sub, be, mod } or null when the question names nobody
+  function detectSubject(question, category){
+    var q = question || '';
+    var src = null;
+    for (var i = 0; i < CATEGORY_PATTERNS.length; i++) if (CATEGORY_PATTERNS[i][0] === category) src = CATEGORY_PATTERNS[i][1].source;
+    if (!src) return null;
+    var subj = null, m, cand;
+
+    function candidate(w, mine){
+      w = (w || '').replace(/['’]s$/i, '');
+      var lw = w.toLowerCase();
+      if (!lw || lw.length < 2) return null;
+      if (RELATIVES.indexOf(lw) !== -1 && mine) return subjectFor('name', 'my ' + lw);
+      if (SUBJECT_STOP[lw]) return null;
+      return subjectFor('name', w);
+    }
+
+    // "Gerald's favorite color"
+    if (!subj){
+      m = new RegExp("(my\\s+)?([A-Za-z][A-Za-z\\-]*)['\\u2019]s\\s+(?:[A-Za-z]+\\s+)?(?:" + src + ')', 'i').exec(q);
+      if (m){ subj = candidate(m[2], !!m[1]); }
+    }
+    // "James' favorite color" (trailing apostrophe only)
+    if (!subj){
+      m = new RegExp("(my\\s+)?([A-Za-z][A-Za-z\\-]*s)['\\u2019]\\s+(?:[A-Za-z]+\\s+)?(?:" + src + ')', 'i').exec(q);
+      if (m){ subj = candidate(m[2], !!m[1]); }
+    }
+    // the apostrophe left off: "Whitneys favorite food", "Chris favorite color"
+    if (!subj){
+      m = new RegExp("(my\\s+)?([A-Za-z]{3,}s)\\s+(?:(?:favou?rite|lucky|secret|birth|first|middle|last)\\s+)?(?:" + src + ')', 'i').exec(q);
+      if (m){
+        var base = m[2];
+        if (SUBJECT_STOP[base.toLowerCase()]) base = '';
+        else if (!NAMES_ENDING_S[base.toLowerCase()]) base = base.slice(0, -1);
+        subj = candidate(base, !!m[1]);
+      }
+    }
+    // "what color Gerald is thinking of" / "what city does Rusty live in"
+    if (!subj){
+      m = new RegExp('(?:' + src + ')\\s+(?:(?:does|did|do|that)\\s+)?(my\\s+)?([A-Za-z][A-Za-z\\-]*)\\s+(?:' + SUBJECT_VERBS + ')\\b', 'i').exec(q);
+      if (m){ subj = candidate(m[2], !!m[1]); }
+    }
+    // "what animal is Gerald thinking of"
+    if (!subj){
+      m = new RegExp('(?:' + src + ')\\s+(?:is|was)\\s+(my\\s+)?([A-Za-z][A-Za-z\\-]*)\\s+(?:thinking|picturing|imagining|from|holding|visiting|seeing|feeling)\\b', 'i').exec(q);
+      if (m){ subj = candidate(m[2], !!m[1]); }
+    }
+    if (!subj){
+      m = /\b(he|she|they|him|her|his|their|them)\b/i.exec(q);
+      if (m){
+        var pr = m[1].toLowerCase();
+        subj = subjectFor(pr === 'he' || pr === 'him' || pr === 'his' ? 'he' : (pr === 'she' || pr === 'her' ? 'she' : 'they'));
+      }
+    }
+    if (!subj && /\b(my|mine|me|myself|i|i'm|im)\b/i.test(q.replace(/[’]/g, "'"))) subj = subjectFor('you');
+    if (!subj) return null;
+
+    var mm = new RegExp('\\b(birth|favou?rite|lucky|secret)\\s+(?:' + src + ')', 'i').exec(q);
+    subj.mod = mm ? mm[1].toLowerCase() : '';
+    return subj;
+  }
+
+  function personalize(line, subj){
+    var wasUpper = /^[A-Z{]/.test(line);
+    var out = line
+      .replace(/\{P\}/g, subj.poss.charAt(0).toUpperCase() + subj.poss.slice(1))
+      .replace(/\{p\}/g, subj.poss)
+      .replace(/\{S\}/g, subj.sub)
+      .replace(/\{be\}/g, subj.be)
+      .replace(/\{mod\}/g, subj.mod ? subj.mod + ' ' : '');
+    return wasUpper ? out.charAt(0).toUpperCase() + out.slice(1) : out;
+  }
+
+  var lastTemplate = {};
+  function pickTemplate(category, subj){
+    var list = SENTENCE_TEMPLATES[category];
+    var i;
+    do { i = Math.floor(Math.random() * list.length); }
+    while (list.length > 1 && i === lastTemplate[category]);
+    lastTemplate[category] = i;
+    var ov = subj && PERSONAL[category] && PERSONAL[category][i];
+    if (ov) return [ov[0] ? personalize(ov[0], subj) : null, ov[1] ? personalize(ov[1], subj) : null];
+    return list[i];
+  }
+
+  // year: two digits become a full year within the last 100 years. a number up to
+  // the current year's last two digits is this century, anything higher is the last
+  function secretToYear(secret, fallback){
+    var n = /^\d{1,2}$/.test(secret) ? parseInt(secret, 10) : wordsToNumber(secret);
+    if (n === null) return fallback;
+    if (n >= 0 && n <= 99){
+      var cy = new Date().getFullYear();
+      var base = cy - (cy % 100);
+      return String(n <= (cy % 100) ? base + n : base - 100 + n);
+    }
+    return String(n);
+  }
+
+
+  // playing card: a rank then a suit, e.g. "ace h", "seven c", "k of spades", "jackd"
+  var CARD_RANKS = { ace:'Ace', a:'Ace', jack:'Jack', j:'Jack', queen:'Queen', q:'Queen', king:'King', k:'King' };
+  var CARD_RANK_NAMES = ['', 'Ace', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+  var CARD_SUITS = { h:'heart', d:'diamond', c:'club', s:'spade' };
+  var SUIT_CHARS = { heart:'\u2665', diamond:'\u2666', club:'\u2663', spade:'\u2660' };
+
+  function matchSuitWord(w){
+    if (!w) return null;
+    if (w.length === 1) return CARD_SUITS[w] || null;
+    var full = ['heart', 'diamond', 'club', 'spade'];
+    for (var i = 0; i < full.length; i++){
+      var f = full[i];
+      if (w === f || w === f + 's') return f;
+      // forgive a typo: same first letter and a close edit distance
+      if (w.charAt(0) === f.charAt(0) && w.length >= 3 && editDistance(w, f) <= 1) return f;
+      if (w.charAt(0) === f.charAt(0) && w.length >= 4 && editDistance(w, f + 's') <= 1) return f;
+    }
+    return null;
+  }
+
+  function matchRankWord(w){
+    if (!w) return null;
+    if (CARD_RANKS[w]) return CARD_RANKS[w];
+    if (/^\d+$/.test(w)){
+      var d = parseInt(w, 10);
+      return d >= 2 && d <= 10 ? CARD_RANK_NAMES[d] : null;
+    }
+    var n = wordsToNumber(w);
+    if (n !== null && n >= 1 && n <= 10) return CARD_RANK_NAMES[n];
+    var small = ['ace', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+    for (var q = 1; q < small.length; q++){
+      if (w.length >= 3 && w.charAt(0) === small[q].charAt(0) && editDistance(w, small[q]) <= 1) return CARD_RANK_NAMES[q + 1];
+    }
+    var names = ['ace', 'jack', 'queen', 'king'];
+    for (var i = 0; i < names.length; i++){
+      if (w.length >= 3 && w.charAt(0) === names[i].charAt(0) && editDistance(w, names[i]) <= 1) return CARD_RANKS[names[i]];
+    }
+    return null;
+  }
+
+  // returns { text:'Seven of Clubs', suit:'club' } or null if it can't be read as a card
+  function secretToCard(secret){
+    var t = (secret || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!t) return null;
+    var words = t.split(' ');
+    var k;
+    // drop a spoken "of"
+    var cleaned = [];
+    for (k = 0; k < words.length; k++) if (words[k] !== 'of') cleaned.push(words[k]);
+    words = cleaned;
+    var rank = null, suit = null, cut;
+    // rank words then suit word: try every split, so "seven c", "sevenc", "twenty"-less cases all work
+    var joined = words.join('');
+    var tries = [];
+    if (words.length >= 2) tries.push([words.slice(0, -1).join(' '), words[words.length - 1]]);
+    for (cut = 1; cut < joined.length; cut++) tries.push([joined.slice(0, cut), joined.slice(cut)]);
+    for (k = 0; k < tries.length; k++){
+      var r = matchRankWord(tries[k][0]), su = matchSuitWord(tries[k][1]);
+      if (r && su){ rank = r; suit = su; break; }
+    }
+    if (!rank) return null;
+    var ri = CARD_RANK_NAMES.indexOf(rank);
+    // numerals for 2-10, the full word for Ace, Jack, Queen, King
+    return { text: (ri >= 2 && ri <= 10) ? String(ri) : rank, suit: suit };
+  }
+
+  function capitalizeName(str){
+    return str.toLowerCase().replace(/(^|[\s\-'])([a-z])/g, function(m, a, b){ return a + b.toUpperCase(); });
+  }
+
+  // asked = { secret, words, question } taken at the moment of the poke, because the
+  // field and the secret entry are cleared right then so a new question can
+  // be started as soon as the answer is up
+  function playAnswerReveal(asked){
+    var secret = (asked.secret || '').trim();
+    var answer = secretToDisplay(secret);
+    var template = null, cardSuit = null;
+    if (answer){
+      var category = detectCategory(asked.question);
+      if (category){
+        template = pickTemplate(category, detectSubject(asked.question, category));
+        if (category === 'name') answer = capitalizeName(answer);
+        if (category === 'year') answer = secretToYear(secret, answer);
+        if (category === 'card'){
+          var card = secretToCard(secret);
+          if (card){ answer = card.text; cardSuit = card.suit; }
+          else template = null; // unreadable entry: show it as typed, no sentence
+        }
+      }
+    } else {
+      if (isYesNoQuestion(asked.question)){
+        answer = nextEightBallAnswer();
+      } else {
+        answer = (asked.words >= THIN_QUESTION_WORD_LIMIT)
+          ? nextFullFailurePhrase()
+          : nextThinFailurePhrase();
+      }
+    }
+
+    var rect = eyeContent.getBoundingClientRect();
+    var fit = fitAnswerTextSize(answer, rect);
+
+    var el = document.createElement('div');
+    el.className = 'reveal-answer';
+    el.style.maxWidth = fit.maxWidthPx + 'px';
+
+    if (!template){
+      el.style.fontSize = fit.fontPx + 'px';
+      el.textContent = answer;
+      eyeContent.appendChild(el);
+      return;
+    }
+
+    var big = document.createElement('div');
+    big.className = 'reveal-big';
+    big.textContent = answer;
+    if (cardSuit) big.textContent = answer + ' ' + SUIT_CHARS[cardSuit];
+    var parts = [];
+    if (template[0]){
+      var lead = document.createElement('div');
+      lead.className = 'reveal-line';
+      lead.textContent = template[0];
+      parts.push(lead);
+    }
+    parts.push(big);
+    if (template[1]){
+      var tail = document.createElement('div');
+      tail.className = 'reveal-line';
+      tail.textContent = template[1];
+      parts.push(tail);
+    }
+    for (var i = 0; i < parts.length; i++) el.appendChild(parts[i]);
+    eyeContent.appendChild(el);
+
+    // small lines sit just under the answer's size. the answer keeps its
+    // size; if the block gets too tall the small lines ease down first, and
+    // only after that does everything shrink together
+    el.style.maxWidth = (rect.width * (cardSuit ? 0.40 : 0.44)) + 'px';
+    var maxH = rect.height * 0.30;
+    var ratio = 0.85, scale = 1;
+    function apply(){
+      big.style.fontSize = (fit.fontPx * scale) + 'px';
+      var small = fit.fontPx * scale * ratio;
+      for (var j = 0; j < parts.length; j++){
+        if (parts[j] !== big) parts[j].style.fontSize = small + 'px';
+      }
+    }
+    apply();
+    var guard = 0;
+    while (el.getBoundingClientRect().height > maxH && guard++ < 40){
+      if (ratio > 0.58) ratio -= 0.04; else scale *= 0.94;
+      apply();
+    }
+  }
+
+  // ============================================================
+  // frame loading and playback
+  // ============================================================
+  var frames = [];
+  var ready = false;
+  var runId = 0; // bumped by reset, so a half-finished sequence stops quietly
+
+  function pad2(n){ return n < 10 ? '0' + n : '' + n; }
+
+  function loadImage(url){
+    return new Promise(function(resolve){
+      var img = new Image();
+      img.onload = function(){
+        if (window.createImageBitmap){
+          // decoded once, kept as raw pixels, so drawing never waits on a decode
+          createImageBitmap(img).then(resolve, function(){ resolve(img); });
+        } else {
+          resolve(img);
+        }
+      };
+      img.onerror = function(){ resolve(null); };
+      img.src = url + '?v=' + ASSET_V;
+    });
+  }
+
+  function loadAllFrames(){
+    var byFile = {};
+    FRAME_FILES.forEach(function(file){
+      if (!(file in byFile)) byFile[file] = loadImage('assets/eye/f' + pad2(file) + '.webp');
+    });
+    var files = Object.keys(byFile);
+    return Promise.all(files.map(function(f){ return byFile[f]; })).then(function(list){
+      var loaded = {};
+      files.forEach(function(f, i){ loaded[f] = list[i]; });
+      FRAME_FILES.forEach(function(file, i){ frames[i] = loaded[file]; });
+    });
+  }
+
+  function drawFrame(i){
+    var f = frames[i];
+    if (!f) return;
+    lastDrawn = i;
+    lidCtx.clearRect(0, 0, eyeLid.width, eyeLid.height);
+    if (eyeLid.width === f.width) lidCtx.drawImage(f, 0, 0);
+    else lidCtx.drawImage(f, 0, 0, eyeLid.width, eyeLid.height);
+  }
+
+  // canvas backing store matches what is actually shown on screen, so the
+  // browser does one clean downscale instead of two
+  var lastDrawn = -1;
+  function sizeLid(){
+    var cw = eyeLid.clientWidth;
+    if (!cw) return;
+    var dpr = window.devicePixelRatio || 1;
+    var w = Math.min(LID_W, Math.max(1, Math.round(cw * dpr)));
+    var h = Math.round(w * LID_H / LID_W);
+    if (w === eyeLid.width && h === eyeLid.height) return;
+    eyeLid.width = w; eyeLid.height = h;
+    lidCtx.imageSmoothingEnabled = true;
+    lidCtx.imageSmoothingQuality = 'high';
+    if (lastDrawn >= 0) drawFrame(lastDrawn);
+  }
+  window.addEventListener('resize', sizeLid);
+  window.addEventListener('orientationchange', sizeLid);
+
+  // plays frames from..to (inclusive) at FRAME_MS each. resolves true when
+  // done, false if a reset interrupted it. onFrame(i) fires as each frame appears.
+  function playRange(from, to, onFrame){
+    var my = runId;
+    return new Promise(function(resolve){
+      var n = Math.abs(to - from) + 1;
+      var dir = to >= from ? 1 : -1;
+      var start = null, shown = -1;
+      function step(now){
+        if (my !== runId){ resolve(false); return; }
+        if (start === null) start = now;
+        var k = Math.floor((now - start) / FRAME_MS);
+        if (k >= n){ resolve(true); return; }
+        if (k !== shown){
+          shown = k;
+          drawFrame(from + dir * k);
+          if (onFrame) onFrame(from + dir * k);
+        }
+        requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
+  function wait(ms){
+    var my = runId;
+    return new Promise(function(resolve){
+      setTimeout(function(){ resolve(my === runId); }, ms);
+    });
+  }
+
+  // ============================================================
+  // tap The Eye: close, "concentrate" (flicker between the two shut
+  // shapes) for REVEAL_HOLD_MS, open into the reveal
+  // ============================================================
+  async function concentrate(totalMs){
+    var elapsed = 0, onA = true;
+    drawFrame(CLOSED_A);
+    while (elapsed + CONCENTRATE_FLICKER_MS < totalMs){
+      if (!(await wait(CONCENTRATE_FLICKER_MS))) return false;
+      elapsed += CONCENTRATE_FLICKER_MS;
+      onA = !onA;
+      drawFrame(onA ? CLOSED_A : CLOSED_B);
+    }
+    if (!(await wait(totalMs - elapsed))) return false;
+    drawFrame(CLOSED_B); // always land on the shape the opening run follows
+    return true;
+  }
+
+  function finishSequence(){
+    drawFrame(OPEN_FRAME);
+    eyeStage.classList.remove('busy');
+    state.busy = false;
+  }
+
+  async function closeHoldOpenThenReveal(){
+    if (state.busy || !ready) return;
+    clearIdleBlink();
+    resetSaccade();
+    state.busy = true;
+    eyeStage.classList.add('busy');
+    var my = runId;
+
+    // keep what the reveal needs, then clear the field and the secret entry
+    // right away so the next question can be typed immediately
+    var asked = { secret: capture.buffer, words: wordCount(questionInput.value), question: questionInput.value };
+    // the question stays in the box until it is tapped again
+    questionSpent = true;
+    capture = freshCapture();
+    if (document.activeElement === questionInput) questionInput.blur();
+
+    // the pupil goes away on the exact frame the lid covers it
+    if (!(await playRange(OPEN_FRAME, CLOSED_A, function(i){
+      if (i === CLOSED_A) hidePupil();
+    }))) return;
+
+    eyeContent.innerHTML = '';
+    state.holding = true;
+    if (!(await concentrate(REVEAL_HOLD_MS))) return;
+    state.holding = false;
+
+    playAnswerReveal(asked); // built while still shut, sitting there the instant the lid opens
+    state.revealed = true;
+    if (!(await playRange(CLOSED_B + 1, LAST_FRAME))) return;
+
+    finishSequence();
+    // brief pause so the reveal registers before ambient motion resumes
+    setTimeout(function(){ if (my === runId){ scheduleIdleBlink(); scheduleSaccade(); } }, 1500);
+  }
+
+  // a plain blink, reused for both ambient idle blinks and for taps on
+  // The Eye once the answer is already showing -- eyeContent is left
+  // completely alone, so the answer just gets briefly covered and
+  // uncovered like a real eyelid passing over it
+  async function playQuickBlink(onDone){
+    state.busy = true;
+    eyeStage.classList.add('busy');
+    if (!(await playRange(OPEN_FRAME, LAST_FRAME))) return;
+    finishSequence();
+    if (onDone) onDone();
+  }
+
+  var suppressNextEyeTap = false;
+
+  function handleEyeTap(){
+    if (suppressNextEyeTap){ suppressNextEyeTap = false; return; }
+    if (state.busy || !ready) return;
+    // a poke only counts as a question once something has been entered;
+    // otherwise it is just a normal blink. the full reveal also runs right
+    // after a previous one, so no RESET is needed between questions
+    var entered = (!questionSpent && questionInput.value.trim() !== '') || (capture.buffer || '').trim() !== '';
+    if (!entered){
+      clearIdleBlink();
+      playQuickBlink(scheduleIdleBlink);
+      return;
+    }
+    closeHoldOpenThenReveal();
+  }
+  eyeStage.addEventListener('click', handleEyeTap);
+
+  // ============================================================
+  // public instructions drawer -- fake, in-character copy. the tab is
+  // physically attached to the panel's bottom edge, so closed just means
+  // the drawer is shifted up by exactly the panel's own height, leaving
+  // only the tab visible; open means shifted back to rest
+  // ============================================================
+  instructionsTab.addEventListener('click', function(){
+    instructionsDrawer.classList.toggle('open');
+  });
+
+  // ============================================================
+  // secret backstage instructions -- opened by a two-finger swipe down,
+  // only when it starts over The Eye card itself
+  // ============================================================
+  var secretMain = document.getElementById('secretMain');
+  var secretDeep = document.getElementById('secretDeep');
+  function showSecretMain(){ secretDeep.hidden = true; secretMain.hidden = false; }
+  function openSecretPanel(){ if (document.activeElement === questionInput) questionInput.blur(); showSecretMain(); secretOverlay.classList.add('open'); }
+  function closeSecretPanel(){ secretOverlay.classList.remove('open'); }
+  document.getElementById('secretDeeper').addEventListener('click', function(e){
+    e.stopPropagation();
+    secretMain.hidden = true; secretDeep.hidden = false;
+    var panel = secretOverlay.querySelector('.secret-panel'); if (panel) panel.scrollTop = 0;
+  });
+  document.getElementById('secretBack').addEventListener('click', function(e){
+    e.stopPropagation();
+    showSecretMain();
+  });
+
+  secretClose.addEventListener('click', function(e){
+    e.stopPropagation();
+    closeSecretPanel();
+  });
+  secretOverlay.addEventListener('click', function(e){
+    if (e.target === secretOverlay) closeSecretPanel(); // tap on the backdrop, not the panel
+  });
+
+  var twoFingerStartY = null;
+  var twoFingerFired = false;
+  var TWO_FINGER_THRESHOLD_PX = 70;
+
+  eyeStage.addEventListener('touchstart', function(e){
+    if (e.touches.length === 2){
+      twoFingerStartY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      twoFingerFired = false;
+    } else {
+      twoFingerStartY = null;
+    }
+  }, { passive:true });
+
+  eyeStage.addEventListener('touchmove', function(e){
+    if (e.touches.length === 2 && twoFingerStartY !== null && !twoFingerFired){
+      var currentY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      if (currentY - twoFingerStartY > TWO_FINGER_THRESHOLD_PX){
+        twoFingerFired = true;
+        suppressNextEyeTap = true; // in case a stray click follows the gesture
+        openSecretPanel();
+      }
+    }
+  }, { passive:true });
+
+  eyeStage.addEventListener('touchend', function(e){
+    if (e.touches.length < 2) twoFingerStartY = null;
+  });
+
+  // ============================================================
+  // ambient idle blinks -- purely cosmetic, randomized timing
+  // ============================================================
+  var idleBlinkTimer = null;
+  function clearIdleBlink(){
+    if (idleBlinkTimer){ clearTimeout(idleBlinkTimer); idleBlinkTimer = null; }
+  }
+  function scheduleIdleBlink(){
+    clearIdleBlink();
+    var delay = 2500 + Math.random() * 4000;
+    idleBlinkTimer = setTimeout(function(){
+      if (state.busy) return;
+      playQuickBlink(scheduleIdleBlink);
+    }, delay);
+  }
+
+  // ============================================================
+  // saccades -- small, controlled shifts of The Eye's visible contents
+  // (the sclera window and whatever text sits on it), giving The Eye a
+  // watchful, slightly anxious quality rather than a calm, static stare.
+  // more frequent than an idle blink, and a bit more pronounced than a
+  // true micro-saccade, but always a quick, deliberate snap to one of a
+  // handful of gaze positions and a hold there -- never a drift or a
+  // twitch. purely cosmetic; paused whenever The Eye is mid-animation.
+  // ============================================================
+  var SACCADE_MIN_DELAY_MS = 650;
+  var SACCADE_MAX_DELAY_MS = 1500;
+  var SACCADE_OFFSETS = [
+    { x:  0, y:  0 },
+    { x: -5, y: -3 },
+    { x:  5, y: -3 },
+    { x: -6, y:  2 },
+    { x:  6, y:  2 },
+    { x: -3, y:  5 },
+    { x:  3, y:  5 },
+    { x:  0, y: -5 }
+  ]; // percentages of eye-stage size
+
+  var saccadeTimer = null;
+  function clearSaccade(){
+    if (saccadeTimer){ clearTimeout(saccadeTimer); saccadeTimer = null; }
+  }
+  function resetSaccade(){
+    clearSaccade();
+    eyeLook.style.transform = 'translate(0%, 0%)';
+  }
+  function scheduleSaccade(){
+    clearSaccade();
+    var delay = SACCADE_MIN_DELAY_MS + Math.random() * (SACCADE_MAX_DELAY_MS - SACCADE_MIN_DELAY_MS);
+    saccadeTimer = setTimeout(function(){
+      if (state.busy){ scheduleSaccade(); return; }
+      var o = SACCADE_OFFSETS[Math.floor(Math.random() * SACCADE_OFFSETS.length)];
+      eyeLook.style.transform = 'translate(' + o.x + '%, ' + o.y + '%)';
+      scheduleSaccade();
+    }, delay);
+  }
+
+  // ============================================================
+  // reset -- same closing/hold/opening pattern as the reveal, just with
+  // a brief hold instead of a dramatic one. works mid-hold too, but is
+  // ignored during the short blink and opening runs
+  // ============================================================
+  var RESET_HOLD_MS = 300;
+
+  async function resetAll(){
+    if (!ready) return;
+    if (state.busy && !state.holding) return;
+    var alreadyShut = state.holding;
+    var my = ++runId;
+    clearIdleBlink();
+    resetSaccade();
+    state.busy = true;
+    state.holding = false;
+    eyeStage.classList.add('busy');
+
+    if (!alreadyShut){
+      if (!(await playRange(OPEN_FRAME, CLOSED_A))) return;
+    }
+    // eye is shut here -- swap everything back to fresh with nothing visible
+    drawFrame(CLOSED_A);
+    questionInput.value = '';
+    questionSpent = false;
+    capture = freshCapture();
+    state.revealed = false;
+    showPupil();
+
+    if (!(await wait(RESET_HOLD_MS))) return;
+    drawFrame(CLOSED_B);
+    if (!(await playRange(CLOSED_B + 1, LAST_FRAME))) return;
+
+    finishSequence();
+    if (my === runId){ scheduleIdleBlink(); scheduleSaccade(); }
+  }
+  resetBtn.addEventListener('click', resetAll);
+
+  // ============================================================
+  // init: nothing is shown or pokeable until every image is in
+  // ============================================================
+  var started = false;
+  function start(){
+    if (started) return;
+    started = true;
+    sizeLid();
+    drawFrame(OPEN_FRAME);
+    showPupil();
+    ready = true;
+    eyeStage.classList.add('ready');
+    scheduleIdleBlink();
+    scheduleSaccade();
+  }
+  Promise.all([
+    loadAllFrames(),
+    loadImage('assets/eye-bg.webp'),
+    loadImage('assets/eye-backer.png'),
+    loadImage('assets/pupil.png'),
+    loadImage('assets/textbox.png')
+  ]).then(start, start);
+  setTimeout(start, 10000); // never stay blank if something hangs
+})();
+</script>
+<div class="site-copyright">&copy; 2026 Joshua Stacy. All rights reserved.</div>
+
+<script>
+(function(){
+  "use strict";
+  var E = window.__eye;
+  if (!E) return;
+  var SECRET = 'blue';
+  var QUESTION = "Can you guess what color Whitney is thinking of?";
+  var TOTAL = 8;
+  var dim = document.getElementById('coachDim'), card = document.getElementById('coachCard');
+  var panel = document.getElementById('coachPanel'), ring = document.getElementById('coachRing');
+  var tag = document.getElementById('coachTag'), chip = document.getElementById('coachChip');
+  var zit = document.getElementById('zitBtn'), box = document.getElementById('questionInput');
+  var eyeWin = document.getElementById('eyeContent'), resetBtn = document.getElementById('resetBtn');
+
+  var step = 0, ringEl = null, ringLabel = '', target = '', timer = null, active = false;
+
+  function norm(s){ return (s || '').replace(/[’‘]/g, "'").toLowerCase(); }
+  function esc(s){ return s.replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+
+  function setRing(el, label){ ringEl = el; ringLabel = label || ''; placeRing(); }
+  function placeRing(){
+    if (!ringEl){ ring.classList.remove('show'); return; }
+    var r = ringEl.getBoundingClientRect();
+    var pad = 8, minS = 56;
+    var w = Math.max(r.width, minS), h = Math.max(r.height, minS);
+    var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    ring.style.left = (cx - w / 2 - pad) + 'px'; ring.style.top = (cy - h / 2 - pad) + 'px';
+    ring.style.width = (w + pad * 2) + 'px'; ring.style.height = (h + pad * 2) + 'px';
+    tag.textContent = ringLabel; tag.style.display = ringLabel ? '' : 'none';
+    ring.classList.add('show');
+  }
+  function placePanel(){
+    var vv = window.visualViewport, inset = 0;
+    if (vv) inset = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+    panel.style.bottom = (inset + 12) + 'px';
+  }
+
+  function head(n, title){ return '<h2 class="coach-title">' + title + '</h2>'; }
+  function foot(nextLabel){
+    return '<div class="coach-row"><button class="coach-skip" data-a="skip" type="button">Skip demo</button>' +
+      (nextLabel ? '<button class="coach-btn" data-a="next" type="button">' + nextLabel + '</button>' : '<span></span>') + '</div>';
+  }
+  var lastHtml = '';
+  function show(html){ if (html !== lastHtml || !panel.classList.contains('show')){ panel.innerHTML = html; lastHtml = html; } dim.classList.remove('show'); panel.classList.add('show'); chip.classList.remove('show'); placePanel(); }
+
+  function go(n){
+    step = n;
+    if (n === 1){
+      panel.classList.remove('show'); setRing(null);
+      card.innerHTML = head(1, 'The thought') +
+        '<div class="coach-swatch" aria-hidden="true"></div>' +
+        '<p class="coach-text">You have asked your friend Whitney to write down a color so The Eye can’t see or hear her choice. For practice, let’s say she chooses <b>blue</b>.</p><p class="coach-sub">(Make sure you see what she writes)</p>' +
+        '<div class="coach-row"><button class="coach-skip" data-a="skip" type="button">Skip demo</button><button class="coach-btn" data-a="next" type="button">Next</button></div>';
+      dim.classList.add('show'); return;
+    }
+    if (n === 2){
+      setRing(zit, 'The zit. Tap it once');
+      show(head(2, 'Find the secret button') + '<p class="coach-text">See the bump above and to the right of the eye? That’s the zit.</p><p class="coach-text" style="margin-top:8px">Tap the zit. Nothing will appear to happen but the secret word is ready to be entered.</p>' + foot('')); return;
+    }
+    if (n === 4){
+      setRing(box, '');
+      renderType(); return;
+    }
+    if (n === 5){
+      setRing(zit, 'Tap it again');
+      show(head(5, 'Lock it in') + '<p class="coach-text">Tap the zit again, or double-tap the space bar.</p>' + foot('')); return;
+    }
+    if (n === 6){
+      target = QUESTION;
+      setRing(box, '');
+      renderFinish(); return;
+    }
+    if (n === 7){
+      setRing(document.getElementById('eyeLid'), 'Poke the eye');
+      show(head(7, 'Poke the eye') + '<p class="coach-text">After the question is fully typed, poke the eye.</p>' + foot('')); return;
+    }
+    if (n === 8){
+      setRing(null);
+      show(head(8, 'The reveal') + '<p class="coach-text">There it is. You typed a question. The Eye answered with the secret.</p>' + foot('Next')); return;
+    }
+    if (n === 9){
+      setRing(null);
+      panel.innerHTML = '<h2 class="coach-title">Show someone real!</h2>' +
+        '<p class="coach-text">After a couple of practice runs in the real app, ask a friend to think of something and write it down. Peek at it, then run the same steps.</p>' +
+        '<div class="coach-row"><button class="coach-btn alt" data-a="again" type="button">Try again</button><button class="coach-btn" data-a="open" type="button">Open the app</button></div>';
+      panel.classList.add('show'); dim.classList.remove('show'); placePanel(); return;
+    }
+  }
+
+  function renderType(warn){
+    var n = (E.cap().buffer || '').length;
+    var ready = (E.cap().buffer || '').toLowerCase() === SECRET;
+    show(head(4, 'Type the secret') +
+      '<p class="coach-text">Tap the question box and type: <b>' + SECRET + '</b></p>' +
+      '<p class="coach-sub">Watch the box. The screen is typing a question, not your secret.</p>' +
+      '<p class="coach-count">' + n + ' of 37 characters including spaces</p>' +
+      (warn ? '<p class="coach-sub coach-warn">' + warn + '</p>' : '') + foot(ready ? 'Next' : ''));
+  }
+  var lastType = '';
+  function renderFinish(warn){
+    var v = norm(box.value), q = norm(QUESTION), html = '', i = 0;
+    var ok = q.indexOf(v) === 0 || v.indexOf(q) === 0;
+    // show what is already in the box dimmed, the rest bold
+    var shown = box.value.length;
+    html = '<span class="done">' + esc(QUESTION.slice(0, shown)) + '</span>' + '<span class="todo">' + esc(QUESTION.slice(shown)) + '</span>';
+    if (!ok){ html = '<span class="bad">' + esc(box.value) + '</span>'; }
+    show(head(6, 'Finish the question') +
+      '<p class="coach-text">Type the rest so it reads naturally:</p>' +
+      '<p class="coach-target">' + html + '</p>' +
+      (!ok ? '<p class="coach-sub coach-warn">That’s not quite it. Delete back to the part that matches, or tap Reset and start over.</p>' : '') + foot(''));
+  }
+
+  function tick(){
+    if (!active) return;
+    var c = E.cap();
+    if (step === 2 && c.active){ go(4); return; }
+    if (step === 4){
+      var b = (c.buffer || '').toLowerCase();
+      if (b.length > 0 && SECRET.indexOf(b) !== 0 && b.indexOf(SECRET) !== 0){ renderType('That isn’t blue. Tap Reset, then start again from the zit.'); return; }
+      if (!c.active && !c.locked && b.length === 0 && lastType === 'armed'){ lastType = ''; go(2); return; }
+      lastType = c.active ? 'armed' : lastType;
+      renderType(); return;
+    }
+    if (step === 5 && c.locked){ go(6); return; }
+    if (step === 5 && c.buffer.length > 0 && c.buffer.toLowerCase().indexOf(SECRET) !== 0){ return; }
+    if (step === 6){
+      var v = norm(box.value);
+      if (v.length >= norm(QUESTION).length && v.indexOf(norm(QUESTION)) === 0){ go(7); return; }
+      renderFinish(); return;
+    }
+    if (step === 7 && eyeWin.querySelector('.reveal-answer')){ go(8); return; }
+  }
+
+  panel.addEventListener('click', onClick); card.addEventListener('click', onClick);
+  function onClick(e){
+    var a = e.target && e.target.getAttribute && e.target.getAttribute('data-a');
+    if (!a) return;
+    if (a === 'next'){ go(step + 1); }
+    else if (a === 'skip'){ stop(); }
+    else if (a === 'again'){ try { resetBtn.click(); } catch (err){} setTimeout(function(){ lastType = ''; go(1); }, 400); }
+    else if (a === 'open'){ window.location.href = 'index.html'; }
+  }
+  chip.addEventListener('click', function(){ try { resetBtn.click(); } catch (err){} setTimeout(function(){ start(); }, 400); });
+
+  function start(){ active = true; lastType = ''; chip.classList.remove('show'); go(1); }
+  function stop(){ active = false; panel.classList.remove('show'); dim.classList.remove('show'); setRing(null); chip.classList.add('show'); }
+
+  window.addEventListener('resize', function(){ placeRing(); placePanel(); });
+  window.addEventListener('scroll', function(){ placeRing(); placePanel(); }, true);
+  if (window.visualViewport){ window.visualViewport.addEventListener('resize', function(){ placeRing(); placePanel(); }); window.visualViewport.addEventListener('scroll', function(){ placeRing(); placePanel(); }); }
+  timer = setInterval(function(){ tick(); if (ringEl) placeRing(); }, 150);
+  start();
+})();
+
+</script>
+</body>
+</html>
