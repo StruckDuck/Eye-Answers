@@ -2077,7 +2077,7 @@
 
   function head(n, title){ return '<h2 class="coach-title">' + title + '</h2>'; }
   function foot(nextLabel){
-    return '<div class="coach-row"><button class="coach-skip" data-a="skip" type="button">Skip demo</button>' +
+    return '<div class="coach-row"><button class="coach-skip" data-a="skip" type="button">Exit demo</button>' +
       (nextLabel ? '<button class="coach-btn" data-a="next" type="button">' + nextLabel + '</button>' : '<span></span>') + '</div>';
   }
   var lastHtml = '';
@@ -2097,7 +2097,7 @@
       panel.classList.remove('show'); setRing(null);
       card.innerHTML = head(0, 'Practice run') +
         '<p class="coach-text">This is the real app with a guide on top. Follow each step on your phone and you’ll perform the trick once, on a pretend friend named Whitney. It takes about a minute.</p>' +
-        '<div class="coach-row"><button class="coach-skip" data-a="skip" type="button">Skip demo</button><button class="coach-btn" data-a="next" type="button">Start demonstration</button></div>';
+        '<div class="coach-row"><button class="coach-skip" data-a="skip" type="button">Exit demo</button><button class="coach-btn" data-a="next" type="button">Start demonstration</button></div>';
       dim.classList.add('show'); return;
     }
     if (n === 1){
@@ -2105,7 +2105,7 @@
       card.innerHTML = head(1, 'The thought') +
         '<div class="coach-swatch" aria-hidden="true"></div>' +
         '<p class="coach-text">You have asked your friend Whitney to think of a color and write it down so The Eye can’t see what she wrote. You see that she wrote the color <b>blue</b>.</p>' +
-        '<div class="coach-row"><button class="coach-skip" data-a="skip" type="button">Skip demo</button><button class="coach-btn" data-a="next" type="button">Next</button></div>';
+        '<div class="coach-row"><button class="coach-skip" data-a="skip" type="button">Exit demo</button><button class="coach-btn" data-a="next" type="button">Next</button></div>';
       dim.classList.add('show'); return;
     }
     if (n === 2){
@@ -2211,7 +2211,7 @@
     var a = e.target && e.target.getAttribute && e.target.getAttribute('data-a');
     if (!a) return;
     if (a === 'next'){ if (step === 4 && !gotIt){ gotIt = true; syncBlock(); renderType(); } else { go(step + 1); } }
-    else if (a === 'skip'){ stop(); }
+    else if (a === 'skip'){ window.location.href = 'index.html?menu'; }
     else if (a === 'again'){ try { resetBtn.click(); } catch (err){} setTimeout(function(){ lastType = ''; go(1); }, 400); }
     else if (a === 'open'){ window.location.href = 'index.html'; }
   }

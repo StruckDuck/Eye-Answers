@@ -1828,6 +1828,12 @@
     showSecretMain();
   });
 
+  // coming back from the demo (index.html?menu) reopens the secret menu
+  if (/[?&]menu(&|=|$)/.test(location.search)){
+    openSecretPanel();
+    try { history.replaceState(null, '', location.pathname + location.hash); } catch (err) {}
+  }
+
   secretClose.addEventListener('click', function(e){
     e.stopPropagation();
     closeSecretPanel();
