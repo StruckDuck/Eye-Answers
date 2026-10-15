@@ -408,6 +408,28 @@
   @media (prefers-color-scheme: dark){
     #vkb{ --kb-bg:#222325; --kb-key:#636566; --kb-spec:#3f4042; --kb-txt:#fff; --kb-shadow:#0008; --kb-hit:#8a8c8e; --kb-hit-spec:#636566; --kb-shift-on:#d2d3d5; --kb-shift-ico:#000; }
   }
+
+  /* Android look: rounded Material keys, no shadows, a round accent action key */
+  #vkb.android{
+    --kb-bg:#e9edf3; --kb-key:#ffffff; --kb-spec:#dde2ea; --kb-txt:#1f1f1f; --kb-shadow:transparent;
+    --kb-hit:#c9d0db; --kb-hit-spec:#ffffff; --kb-shift-on:#c2e7ff; --kb-shift-ico:#001d35; --kb-done:#c2e7ff; --kb-done-ico:#001d35;
+    font-family:'Roboto','Google Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+    padding:calc(var(--u)*10) calc(var(--u)*4) calc(env(safe-area-inset-bottom, 0px) + var(--u)*12);
+  }
+  #vkb.android .vk-row{ gap:calc(var(--u)*5); margin-bottom:calc(var(--u)*9); }
+  #vkb.android .vk-key{ height:calc(var(--u)*49); border-radius:calc(var(--u)*9); box-shadow:none; max-width:calc(var(--u)*38); font-size:calc(var(--u)*22); }
+  #vkb.android .vk-key.num{ font-size:calc(var(--u)*19); height:calc(var(--u)*44); }
+  #vkb.android .vk-key.sym{ max-width:calc(var(--u)*46); }
+  #vkb.android .vk-key.spec{ max-width:none; }
+  #vkb.android .vk-key.space{ border-radius:calc(var(--u)*24); font-size:0; max-width:none; }
+  #vkb.android .vk-key.more, #vkb.android .vk-key.mode{ white-space:nowrap; font-size:calc(var(--u)*14); }
+  #vkb.android .vk-key.done{ background:var(--kb-done); border-radius:calc(var(--u)*24); max-width:none; }
+  #vkb.android .vk-key.done svg{ stroke:var(--kb-done-ico); }
+  #vkb.android .vk-key.mode{ border-radius:calc(var(--u)*24); font-size:calc(var(--u)*15); }
+  #vkb.android .vk-key.shift svg, #vkb.android .vk-key.back svg{ stroke-width:1.7; }
+  @media (prefers-color-scheme: dark){
+    #vkb.android{ --kb-bg:#1e1f22; --kb-key:#3a3d41; --kb-spec:#2b2d31; --kb-txt:#e8eaed; --kb-hit:#5a5e64; --kb-hit-spec:#4a4d52; --kb-shift-on:#a8c7fa; --kb-shift-ico:#062e6f; --kb-done:#a8c7fa; --kb-done-ico:#062e6f; }
+  }
 </style>
 </head>
 <body>
@@ -450,7 +472,7 @@
     <ol>
       <li><strong>Tap the zit.</strong> It's the bump above and to the right of the eye. Nothing will appear to happen.</li>
       <li><strong>Tap the question box and type the secret.</strong> The box spells &ldquo;Can you guess what they are thinking?&rdquo; no matter what you type. You have 37 characters.</li>
-      <li><strong>Tap the zit again, or press the period key.</strong> Either one locks the secret in.</li>
+      <li><strong>Tap the zit again, or double-tap the space bar.</strong> Either one locks the secret in.</li>
       <li><strong>Finish the question.</strong> Type whatever you like to end the question.</li>
       <li><strong>Backspace counts as a keystroke.</strong> It deletes a letter from the secret, but the sentence keeps spelling forward.</li>
     </ol>
@@ -470,7 +492,7 @@
       <h2>Dig deeper</h2>
       <details class="deep-sec" open>
         <summary>Numbers</summary>
-        <p>The number keys sit above the letters, so you can type digits straight in. &ldquo;347&rdquo; shows 347 and &ldquo;5551212&rdquo; shows 5551212. You can also type numbers as words. If you type &ldquo;twelve&rdquo;, the eye shows 12. Words work from 0 to 100 and forgive misspellings.</p>
+        <p>Type numbers as words. If you type &ldquo;twelve&rdquo;, the eye shows 12. This means you never have to switch your keyboard to the number pad while entering the secret, which could look suspicious. It works from 0 to 100 and forgives misspellings. On Android the keyboard has a number row built in, so digits can be typed straight in, and the period key also locks the secret.</p>
       </details>
       <details class="deep-sec">
         <summary>Sentence answers</summary>
@@ -496,7 +518,7 @@
         <summary>The zit</summary>
         <ul>
           <li>Tap it before you type the secret.</li>
-          <li>Tap it again, or press the period key, to lock the secret in.</li>
+          <li>Tap it again, or double-tap the space bar, to lock the secret in.</li>
         </ul>
       </details>
       <details class="deep-sec">
@@ -563,7 +585,7 @@
   var state = { busy:false, revealed:false, holding:false };
 
   function freshCapture(){
-    return { active:false, locked:false, fillerPos:0, buffer:'', shown:'', comp:'' };
+    return { active:false, locked:false, fillerPos:0, buffer:'', shown:'', comp:'', lastSpace:0 };
   }
   var capture = freshCapture();
   // true once a question has been answered: its text stays in the box, but it
@@ -600,6 +622,30 @@
     if (e.key === 'Enter'){ e.preventDefault(); questionInput.blur(); }
   });
 
+  // double-space lock, shared by the native and the on-screen keyboard
+  var DOUBLE_SPACE_MS = 600;
+  function isDoubleSpace(text){
+    var now = Date.now();
+    var hasSecret = capture.buffer.replace(/\s+/g, '').length > 0;
+    if (!hasSecret){ capture.lastSpace = (text === ' ') ? now : 0; return false; }
+    if (text === '. ' || text === '.\u00a0') return true; // iOS turns the pair into this
+    if (text === ' '){
+      var fast = capture.lastSpace && (now - capture.lastSpace) < DOUBLE_SPACE_MS;
+      if (fast && /\s$/.test(capture.buffer)) return true;
+      capture.lastSpace = now;
+      return false;
+    }
+    capture.lastSpace = 0;
+    return false;
+  }
+  function lockByDoubleSpace(){
+    if (/\s$/.test(capture.buffer)) capture.buffer = capture.buffer.replace(/\s+$/, '');
+    advanceFiller(); // still a keystroke as far as the visible text goes
+    capture.active = false;
+    if (capture.buffer.length > 0) capture.locked = true;
+    capture.lastSpace = 0;
+  }
+
   questionInput.addEventListener('beforeinput', function(e){
     if (e.inputType === 'insertLineBreak' || e.inputType === 'insertParagraph'){
       e.preventDefault(); questionInput.blur(); return;
@@ -616,6 +662,9 @@
       // the final commit of a word already counted while it was composed
       if (capture.comp && text === capture.comp){ capture.comp = ''; return; }
       capture.comp = '';
+      // a double space locks the secret, like the second zit tap. the iPhone's
+      // own double-space shortcut arrives as '. ', which counts the same
+      if (isDoubleSpace(text)){ lockByDoubleSpace(); return; }
       for (var i = 0; i < text.length; i++){
         capture.buffer += text[i];
         advanceFiller();
@@ -727,10 +776,16 @@
   // pressing the period while the secret entry is armed locks the secret,
   // exactly like the second zit tap.
   // ============================================================
-  var useVK = !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+  // iPhone and iPad keep Apple's own keyboard (it works well there). every
+  // other touch device gets this keyboard, because Android keyboards run
+  // predictive text and composition that interfere with the hidden entry.
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var useVK = !isIOS && !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
   var vk = document.getElementById('vkb');
   if (useVK && vk){
     questionInput.setAttribute('inputmode', 'none');
+    vk.classList.add('android');
     var vkShift = 0;     // 0 off, 1 on (one letter), 2 caps lock
     var vkLastShiftTap = 0;
     var vkPage = 'abc';  // abc | sym1 | sym2
@@ -767,6 +822,9 @@
 
     // one keystroke into the question field, honoring the hidden secret entry
     function vkInsert(ch){
+      if (capture.active && isDoubleSpace(ch)){
+        lockByDoubleSpace(); vkScroll(); return;
+      }
       if (capture.active && ch === '.' && capture.buffer.length > 0){
         // the period locks the secret. it is a keystroke like any other, so
         // the visible text still advances, but it never joins the secret
@@ -846,12 +904,12 @@
         });
         'zxcvbnm'.split('').forEach(function(d){ vkCharKey(r4, d, ''); });
         vkKey(r4, ICON_BACK, 'spec back', function(){ vkBackspace(); vkAfterKey(); }, true);
-        vkBottomRow('123', 'sym1');
+        vkBottomRow('?123', 'sym1');
       } else {
         var r2s = vkRow();
         (vkPage === 'sym1' ? '-/:;()$&@"' : '[]{}#%^*+=').split('').forEach(function(d){ vkCharKey(r2s, d, 'sym'); });
         var r3s = vkRow();
-        vkKey(r3s, vkPage === 'sym1' ? '#+=' : '123', 'spec more', function(){ vkGo(vkPage === 'sym1' ? 'sym2' : 'sym1'); });
+        vkKey(r3s, vkPage === 'sym1' ? '=\\<' : '?123', 'spec more', function(){ vkGo(vkPage === 'sym1' ? 'sym2' : 'sym1'); });
         (vkPage === 'sym1' ? ".,?!'" : '_\\|~<>€£').split('').forEach(function(d){ vkCharKey(r3s, d, 'sym'); });
         vkKey(r3s, ICON_BACK, 'spec back more', function(){ vkBackspace(); vkAfterKey(); }, true);
         vkBottomRow('ABC', 'abc');
