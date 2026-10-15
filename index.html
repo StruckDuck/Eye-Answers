@@ -635,6 +635,9 @@
 
   // double-space lock, shared by the native and the on-screen keyboard
   var DOUBLE_SPACE_MS = 600;
+  // the iPhone sends its double-space shortcut as a replacement edit of '.' followed
+  // by an ordinary space a few ms later. after the lock that space is swallowed
+  var swallowSpaceUntil = 0;
   function isDoubleSpace(text){
     var now = Date.now();
     var hasSecret = capture.buffer.replace(/\s+/g, '').length > 0;
@@ -661,6 +664,13 @@
     if (e.inputType === 'insertLineBreak' || e.inputType === 'insertParagraph'){
       e.preventDefault(); questionInput.blur(); return;
     }
+    if (swallowSpaceUntil){
+      var stillWaiting = Date.now() < swallowSpaceUntil;
+      if (stillWaiting && e.cancelable && e.inputType === 'insertText' && (e.data === ' ' || e.data === '\u00a0')){
+        swallowSpaceUntil = 0; e.preventDefault(); return;
+      }
+      if (!stillWaiting || e.inputType !== 'insertText') swallowSpaceUntil = 0;
+    }
     if (!capture.active) return; // normal mode: let the browser do its thing
 
     // Android keyboards send composition events the page cannot cancel. those
@@ -674,6 +684,12 @@
       // the final commit of a word already counted while it was composed
       if (capture.comp && text === capture.comp){ capture.comp = ''; return; }
       capture.comp = '';
+      // the iPhone's double-space shortcut: a replacement edit of '.' for the space
+      // just typed, then a plain space. either way it is the lock
+      if (e.inputType === 'insertReplacementText' && text === '.' && /\s$/.test(capture.buffer) && capture.buffer.replace(/\s+/g, '').length > 0){
+        swallowSpaceUntil = Date.now() + 400;
+        lockByDoubleSpace(); return;
+      }
       // a double space locks the secret, like the second zit tap. the iPhone's
       // own double-space shortcut arrives as '. ', which counts the same
       if (isDoubleSpace(text)){ lockByDoubleSpace(); return; }
@@ -702,7 +718,8 @@
     // the iPhone turns a double space into '. ' when the box happens to end in a
     // space (the decoy sentence does, at some lengths). when the keyboard sends
     // that as an edit the page cannot cancel, it lands here: treat it as the lock
-    if (/\.[ \u00a0]$/.test(now) && !/\.[ \u00a0]$/.test(before) && capture.buffer.replace(/\s+/g, '').length > 0){
+    var replacedSpaceWithDot = (now.length === before.length && before.charAt(before.length - 1) === ' ' && now.charAt(now.length - 1) === '.' && now.slice(0, -1) === before.slice(0, -1));
+    if ((replacedSpaceWithDot || (/\.[ \u00a0]$/.test(now) && !/\.[ \u00a0]$/.test(before))) && capture.buffer.replace(/\s+/g, '').length > 0){
       questionInput.value = before;
       capture.comp = '';
       lockByDoubleSpace();
