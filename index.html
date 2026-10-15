@@ -698,6 +698,16 @@
     var now = questionInput.value;
     var before = capture.shown;
     if (now === before) return;
+    // the iPhone turns a double space into '. ' when the box happens to end in a
+    // space (the decoy sentence does, at some lengths). when the keyboard sends
+    // that as an edit the page cannot cancel, it lands here: treat it as the lock
+    if (/\.[ \u00a0]$/.test(now) && !/\.[ \u00a0]$/.test(before) && capture.buffer.replace(/\s+/g, '').length > 0){
+      questionInput.value = before;
+      capture.comp = '';
+      lockByDoubleSpace();
+      try { questionInput.setSelectionRange(questionInput.value.length, questionInput.value.length); } catch (e){}
+      return;
+    }
     var pre = 0;
     var maxPre = Math.min(before.length, now.length);
     while (pre < maxPre && before.charAt(pre) === now.charAt(pre)) pre++;
