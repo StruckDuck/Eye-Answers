@@ -465,7 +465,13 @@
 @keyframes coachPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
 #coachChip{position:fixed;left:12px;bottom:12px;z-index:9001;display:none;font:600 .88rem -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:8px 12px;border-radius:8px;border:1px solid rgba(234,225,200,.5);background:#41504F;color:#EAE1C8;cursor:pointer}
 #coachChip.show{display:block}
-@media (prefers-reduced-motion:reduce){#coachRing{animation:none}}
+#coachSwipe{position:fixed;z-index:8999;pointer-events:none;display:none;width:0;height:0}
+#coachSwipe.show{display:block}
+.coach-dot{position:absolute;width:46px;height:46px;left:-23px;top:-23px;border-radius:50%;border:3px solid #41504F;background:rgba(255,255,255,.6);box-shadow:0 0 0 2px #EAE1C8,0 4px 14px rgba(0,0,0,.4);animation:coachSwipe 1.9s ease-in-out infinite}
+.coach-dot.a{margin-left:-36px}
+.coach-dot.b{margin-left:36px}
+@keyframes coachSwipe{0%{transform:translateY(-110px);opacity:0}15%{opacity:1}75%{opacity:1}100%{transform:translateY(110px);opacity:0}}
+@media (prefers-reduced-motion:reduce){#coachRing{animation:none}.coach-dot{animation:none}}
 
 </style>
 </head>
@@ -577,6 +583,7 @@
 <div id="coachDim"><div class="coach-card" id="coachCard"></div></div>
 <div id="coachRing"><span class="tag" id="coachTag"></span></div>
 <div id="coachBlock"></div>
+<div id="coachSwipe"><span class="coach-dot a"></span><span class="coach-dot b"></span></div>
 <div id="coachPanel" role="dialog" aria-live="polite"></div>
 <button id="coachChip" type="button">Restart demo</button>
 
@@ -2071,8 +2078,16 @@
   var lastHtml = '';
   function show(html){ if (html !== lastHtml || !panel.classList.contains('show')){ panel.innerHTML = html; lastHtml = html; } dim.classList.remove('show'); panel.classList.add('show'); chip.classList.remove('show'); placePanel(); }
 
+  var swipe = document.getElementById('coachSwipe'), swipeOn = false;
+  function placeSwipe(){
+    if (!swipeOn){ swipe.classList.remove('show'); return; }
+    var r = document.getElementById('eyeStage').getBoundingClientRect();
+    swipe.style.left = (r.left + r.width / 2) + 'px'; swipe.style.top = (r.top + r.height / 2) + 'px';
+    swipe.classList.add('show');
+  }
   function go(n){
     step = n;
+    swipeOn = false; placeSwipe();
     if (n === 0){
       panel.classList.remove('show'); setRing(null);
       card.innerHTML = head(0, 'Practice run') +
@@ -2118,6 +2133,13 @@
       setRing(null);
       panel.innerHTML = '<h2 class="coach-title">Show someone real!</h2>' +
         '<p class="coach-text">After a couple of practice runs in the real app, ask a friend to think of something and write it down. Peek at it, then run the same steps.</p>' +
+        '<div class="coach-row"><span></span><button class="coach-btn" data-a="next" type="button">Next</button></div>';
+      panel.classList.add('show'); dim.classList.remove('show'); placePanel(); return;
+    }
+    if (n === 10){
+      setRing(null); swipeOn = true; placeSwipe();
+      panel.innerHTML = '<h2 class="coach-title">The secret menu</h2>' +
+        '<p class="coach-text">If you ever need a refresher on working the trick, or want to learn more advanced ways to perform it, use two fingers to swipe down the screen to access the secret menu.</p>' +
         '<div class="coach-row"><button class="coach-btn alt" data-a="again" type="button">Try again</button><button class="coach-btn" data-a="open" type="button">Open the app</button></div>';
       panel.classList.add('show'); dim.classList.remove('show'); placePanel(); return;
     }
@@ -2191,12 +2213,12 @@
   chip.addEventListener('click', function(){ try { resetBtn.click(); } catch (err){} setTimeout(function(){ start(); }, 400); });
 
   function start(){ active = true; lastType = ''; chip.classList.remove('show'); go(0); }
-  function stop(){ active = false; panel.classList.remove('show'); dim.classList.remove('show'); setRing(null); chip.classList.add('show'); }
+  function stop(){ active = false; swipeOn = false; placeSwipe(); panel.classList.remove('show'); dim.classList.remove('show'); setRing(null); chip.classList.add('show'); }
 
   window.addEventListener('resize', function(){ placeRing(); placePanel(); });
   window.addEventListener('scroll', function(){ placeRing(); placePanel(); }, true);
   if (window.visualViewport){ window.visualViewport.addEventListener('resize', function(){ placeRing(); placePanel(); }); window.visualViewport.addEventListener('scroll', function(){ placeRing(); placePanel(); }); }
-  timer = setInterval(function(){ tick(); if (ringEl) placeRing(); }, 150);
+  timer = setInterval(function(){ tick(); if (ringEl) placeRing(); if (swipeOn) placeSwipe(); }, 150);
   start();
 })();
 
