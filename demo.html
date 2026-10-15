@@ -2083,6 +2083,7 @@
       show(head(2, 'Find the secret button') + '<p class="coach-text">See the bump above and to the right of the eye? That’s the zit.</p><p class="coach-text" style="margin-top:8px">Tap the zit. Nothing will appear to happen but the secret word is ready to be entered.</p>' + foot('')); return;
     }
     if (n === 4){
+      gotIt = false; lastType = '';
       setRing(box, '');
       renderType(); return;
     }
@@ -2114,14 +2115,18 @@
 
   function renderType(warn){
     var n = (E.cap().buffer || '').length;
-    var ready = (E.cap().buffer || '').toLowerCase() === SECRET;
+    if (!gotIt){
+      show(head(4, 'Type the secret') +
+        '<p class="coach-text">Tap the question box and begin to type the word <b>' + SECRET + '</b>. The screen will type a question instead of the word you are actually typing. This is exactly what is supposed to happen.</p>' + foot('Got it'));
+      return;
+    }
     show(head(4, 'Type the secret') +
-      '<p class="coach-text">Tap the question box and type: <b>' + SECRET + '</b></p>' +
-      '<p class="coach-sub">Watch the box. The screen is typing a question, not your secret.</p>' +
+      '<p class="coach-text">Type <b>' + SECRET + '</b> into the question box. The question appears to type instead.</p>' +
       '<p class="coach-count">' + n + ' of 37 characters including spaces</p>' +
       (warn ? '<p class="coach-sub coach-warn">' + warn + '</p>' : '') + foot(''));
   }
   var lastType = '';
+  var gotIt = false;
   function renderFinish(warn){
     var v = norm(box.value), q = norm(QUESTION), html = '', i = 0;
     var ok = q.indexOf(v) === 0 || v.indexOf(q) === 0;
@@ -2141,10 +2146,10 @@
     if (step === 2 && c.active){ go(4); return; }
     if (step === 4){
       var b = (c.buffer || '').toLowerCase();
-      if (b.length > 0 && SECRET.indexOf(b) !== 0 && b.indexOf(SECRET) !== 0){ renderType('That isn’t blue. Tap Reset, then start again from the zit.'); return; }
+      if (gotIt && b.length > 0 && SECRET.indexOf(b) !== 0 && b.indexOf(SECRET) !== 0){ renderType('That isn’t blue. Tap Reset, then start again from the zit.'); return; }
       if (!c.active && !c.locked && b.length === 0 && lastType === 'armed'){ lastType = ''; go(2); return; }
       lastType = c.active ? 'armed' : lastType;
-      if (b === SECRET){ go(5); return; }
+      if (gotIt && b === SECRET){ go(5); return; }
       renderType(); return;
     }
     if (step === 5 && c.locked){ go(6); return; }
@@ -2161,7 +2166,7 @@
   function onClick(e){
     var a = e.target && e.target.getAttribute && e.target.getAttribute('data-a');
     if (!a) return;
-    if (a === 'next'){ go(step + 1); }
+    if (a === 'next'){ if (step === 4 && !gotIt){ gotIt = true; renderType(); } else { go(step + 1); } }
     else if (a === 'skip'){ stop(); }
     else if (a === 'again'){ try { resetBtn.click(); } catch (err){} setTimeout(function(){ lastType = ''; go(1); }, 400); }
     else if (a === 'open'){ window.location.href = 'index.html'; }
