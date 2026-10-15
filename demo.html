@@ -2073,6 +2073,13 @@
 
   function go(n){
     step = n;
+    if (n === 0){
+      panel.classList.remove('show'); setRing(null);
+      card.innerHTML = head(0, 'Practice run') +
+        '<p class="coach-text">This is the real app with a guide on top. Follow each step on your phone and you’ll perform the trick once, on a pretend friend named Whitney. It takes about a minute.</p>' +
+        '<div class="coach-row"><button class="coach-skip" data-a="skip" type="button">Skip demo</button><button class="coach-btn" data-a="next" type="button">Start demonstration</button></div>';
+      dim.classList.add('show'); return;
+    }
     if (n === 1){
       panel.classList.remove('show'); setRing(null);
       card.innerHTML = head(1, 'The thought') +
@@ -2183,7 +2190,7 @@
   }
   chip.addEventListener('click', function(){ try { resetBtn.click(); } catch (err){} setTimeout(function(){ start(); }, 400); });
 
-  function start(){ active = true; lastType = ''; chip.classList.remove('show'); go(1); }
+  function start(){ active = true; lastType = ''; chip.classList.remove('show'); go(0); }
   function stop(){ active = false; panel.classList.remove('show'); dim.classList.remove('show'); setRing(null); chip.classList.add('show'); }
 
   window.addEventListener('resize', function(){ placeRing(); placePanel(); });
