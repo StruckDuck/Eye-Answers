@@ -5,17 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>The Eye Knows All</title>
 <meta name="apple-mobile-web-app-title" content="The Eye Knows All">
+<meta name="description" content="A mind-reading novelty app. Type a question and The Eye gives the answer.">
 <meta name="copyright" content="&copy; 2026 Joshua Stacy. All rights reserved.">
 <meta name="application-name" content="The Eye Knows All">
 <link rel="icon" type="image/png" href="assets/icon.png?v=6">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=6">
 <meta property="og:title" content="The Eye Knows All">
+<meta property="og:description" content="A mind-reading novelty app. Type a question and The Eye gives the answer.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="assets/link-preview.png?v=2">
+<meta property="og:url" content="https://eyeknowsall.com/">
+<meta property="og:image" content="https://eyeknowsall.com/assets/link-preview.png?v=3">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="assets/link-preview.png?v=2">
+<meta name="twitter:title" content="The Eye Knows All">
+<meta name="twitter:description" content="A mind-reading novelty app. Type a question and The Eye gives the answer.">
+<meta name="twitter:image" content="https://eyeknowsall.com/assets/link-preview.png?v=3">
 <style>
   @font-face{
     font-family: 'Monthoers';
@@ -1460,7 +1465,6 @@
   var CARD_RANK_NAMES = ['', 'Ace', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
   var CARD_SUITS = { h:'heart', d:'diamond', c:'club', s:'spade' };
   var SUIT_CHARS = { heart:'\u2665', diamond:'\u2666', club:'\u2663', spade:'\u2660' };
-  var CARD_SUIT_NAMES = { heart:'Hearts', diamond:'Diamonds', club:'Clubs', spade:'Spades' };
 
   function matchSuitWord(w){
     if (!w) return null;
@@ -1494,19 +1498,6 @@
       if (w.length >= 3 && w.charAt(0) === names[i].charAt(0) && editDistance(w, names[i]) <= 1) return CARD_RANKS[names[i]];
     }
     return null;
-  }
-
-  function editDistance(a, b){
-    var prev = [], cur, i, j;
-    for (j = 0; j <= b.length; j++) prev[j] = j;
-    for (i = 1; i <= a.length; i++){
-      cur = [i];
-      for (j = 1; j <= b.length; j++){
-        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
-      }
-      prev = cur;
-    }
-    return prev[b.length];
   }
 
   // returns { text:'Seven of Clubs', suit:'club' } or null if it can't be read as a card
