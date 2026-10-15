@@ -1333,7 +1333,12 @@
   var SUBJECT_STOP = {};
   ('a an the this that these those it its he she they we you i me my your our their his her them him someone ' +
    'somebody anyone anybody everyone everybody who what which there here and or so now today tonight one ' +
-   'person guy girl man woman not just still really always never').split(' ').forEach(function(w){ SUBJECT_STOP[w] = 1; });
+   'person guy girl man woman not just still really always never this his its does was has yes as us is perhaps guess ' + 'boys girls guys people kids friends others ones things').split(' ').forEach(function(w){ SUBJECT_STOP[w] = 1; });
+  // names that really end in s, so a missing apostrophe isn't mistaken for one
+  var NAMES_ENDING_S = {};
+  ('james chris thomas lucas carlos louis marcus jesus jonas nicholas travis curtis dennis francis charles giles ' +
+   'agnes doris iris ross gus jess moses hughes silas elias tobias matthias andreas dallas ellis lewis willis ' +
+   'rhys reese reyes morris harris jones adams williams davis wilson thomas hans').split(' ').forEach(function(w){ NAMES_ENDING_S[w] = 1; });
   var RELATIVES = 'friend wife husband mom mother dad father son daughter brother sister girlfriend boyfriend ' +
     'partner buddy boss neighbor neighbour cousin uncle aunt grandma grandpa kid child baby'.split(' ');
 
@@ -1363,17 +1368,34 @@
       return subjectFor('name', w);
     }
 
-    // "what color Gerald is thinking of" / "what city does Rusty live in"
-    m = new RegExp('(?:' + src + ')\\s+(?:(?:does|did|do|that)\\s+)?(my\\s+)?([A-Za-z][A-Za-z\\-]*)\\s+(?:' + SUBJECT_VERBS + ')\\b', 'i').exec(q);
-    if (m){ subj = candidate(m[2], !!m[1]); }
-    // "what animal is Gerald thinking of"
-    if (!subj){
-      m = new RegExp('(?:' + src + ')\\s+(?:is|was)\\s+(my\\s+)?([A-Za-z][A-Za-z\\-]*)\\s+(?:thinking|picturing|imagining|from|holding|visiting|seeing|feeling)\\b', 'i').exec(q);
-      if (m){ subj = candidate(m[2], !!m[1]); }
-    }
     // "Gerald's favorite color"
     if (!subj){
       m = new RegExp("(my\\s+)?([A-Za-z][A-Za-z\\-]*)['\\u2019]s\\s+(?:[A-Za-z]+\\s+)?(?:" + src + ')', 'i').exec(q);
+      if (m){ subj = candidate(m[2], !!m[1]); }
+    }
+    // "James' favorite color" (trailing apostrophe only)
+    if (!subj){
+      m = new RegExp("(my\\s+)?([A-Za-z][A-Za-z\\-]*s)['\\u2019]\\s+(?:[A-Za-z]+\\s+)?(?:" + src + ')', 'i').exec(q);
+      if (m){ subj = candidate(m[2], !!m[1]); }
+    }
+    // the apostrophe left off: "Whitneys favorite food", "Chris favorite color"
+    if (!subj){
+      m = new RegExp("(my\\s+)?([A-Za-z]{3,}s)\\s+(?:(?:favou?rite|lucky|secret|birth|first|middle|last)\\s+)?(?:" + src + ')', 'i').exec(q);
+      if (m){
+        var base = m[2];
+        if (SUBJECT_STOP[base.toLowerCase()]) base = '';
+        else if (!NAMES_ENDING_S[base.toLowerCase()]) base = base.slice(0, -1);
+        subj = candidate(base, !!m[1]);
+      }
+    }
+    // "what color Gerald is thinking of" / "what city does Rusty live in"
+    if (!subj){
+      m = new RegExp('(?:' + src + ')\\s+(?:(?:does|did|do|that)\\s+)?(my\\s+)?([A-Za-z][A-Za-z\\-]*)\\s+(?:' + SUBJECT_VERBS + ')\\b', 'i').exec(q);
+      if (m){ subj = candidate(m[2], !!m[1]); }
+    }
+    // "what animal is Gerald thinking of"
+    if (!subj){
+      m = new RegExp('(?:' + src + ')\\s+(?:is|was)\\s+(my\\s+)?([A-Za-z][A-Za-z\\-]*)\\s+(?:thinking|picturing|imagining|from|holding|visiting|seeing|feeling)\\b', 'i').exec(q);
       if (m){ subj = candidate(m[2], !!m[1]); }
     }
     if (!subj){
