@@ -2302,10 +2302,30 @@
     if (!a) return;
     if (a === 'next'){ if (step === 4 && !gotIt){ gotIt = true; syncBlock(); renderType(); } else { go(step + 1); } }
     else if (a === 'skip'){ window.location.href = 'index.html?menu'; }
-    else if (a === 'again'){ try { resetBtn.click(); } catch (err){} setTimeout(function(){ lastType = ''; pickExample(); go(1); }, 400); }
+    else if (a === 'again'){
+      panel.classList.remove('show'); swipeOn = false; placeSwipe(); setRing(null);
+      resetEye(function(){ lastType = ''; pickExample(); go(1); });
+    }
     else if (a === 'open'){ window.location.href = 'index.html'; }
   }
-  chip.addEventListener('click', function(){ try { resetBtn.click(); } catch (err){} setTimeout(function(){ start(); }, 400); });
+  // the app ignores a Reset tap while the eye is mid-blink, which would leave the old answer showing.
+  // so wait for the eye to be still, press Reset, confirm it really started, then wait for it to finish
+  var eyeStage = document.getElementById('eyeStage');
+  function resetEye(done){
+    var tries = 0, finished = false;
+    function fin(){ if (finished) return; finished = true; done(); }
+    function waitDone(){ if (finished) return; if (!eyeStage.classList.contains('busy')) return fin(); setTimeout(waitDone, 150); }
+    function attempt(){
+      if (finished) return;
+      if (tries++ > 40) return fin();
+      if (eyeStage.classList.contains('busy')){ setTimeout(attempt, 150); return; }
+      try { resetBtn.click(); } catch (err){}
+      setTimeout(function(){ if (eyeStage.classList.contains('busy')) waitDone(); else attempt(); }, 120);
+    }
+    setTimeout(fin, 8000);
+    attempt();
+  }
+  chip.addEventListener('click', function(){ resetEye(function(){ start(); }); });
 
   function start(){ if (active === false && step > 0) pickExample(); active = true; lastType = ''; chip.classList.remove('show'); go(0); }
   function stop(){ active = false; swipeOn = false; placeSwipe(); panel.classList.remove('show'); dim.classList.remove('show'); setRing(null); chip.classList.add('show'); }
