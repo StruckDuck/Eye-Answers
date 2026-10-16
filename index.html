@@ -1997,14 +1997,17 @@ var CARDS = (function(){
       card: 'Spell a playing card, like \u201cseven c\u201d. The decoy sentence will appear as you type.'
     };
     function clearResult(){ out.textContent = ''; note.textContent = ''; }
+    var locked = false, secret = '', lockedLen = 0, lastSp = 0;
     function showTyping(){
-      var n = Math.min(inp.value.length, FILLER.length);
+      // after the lock, whatever is typed is just the rest of the question; the lock itself counts as one keystroke
+      var len = locked ? secret.length + 1 + Math.max(0, inp.value.length - lockedLen) : inp.value.length;
+      var n = Math.min(len, FILLER.length);
       decoy.textContent = n ? FILLER.slice(0, n) : 'Question';
       decoy.classList.toggle('empty', !n);
-      typed.textContent = inp.value ? 'You typed: ' + inp.value : '';
+      typed.textContent = locked ? 'Secret locked in: ' + secret : (inp.value ? 'You typed: ' + inp.value : '');
     }
     function reveal(){
-      var raw = inp.value.trim(), res = '', msg = '';
+      var raw = (locked ? secret : inp.value).trim(), res = '', msg = '';
       if (!raw){ clearResult(); note.textContent = 'Type a secret first.'; return; }
       if (mode === 'number'){
         var d = secretToDisplay(raw);
@@ -2016,7 +2019,16 @@ var CARDS = (function(){
         res = y;
       } else {
         var c = secretToCard(raw);
-        if (c) res = c.text + ' ' + SUIT_CHARS[c.suit];
+        if (c){
+          res = c.text + ' ' + SUIT_CHARS[c.suit];
+          var rk = { Ace:'A', Jack:'J', Queen:'Q', King:'K' }[c.text] || parseInt(c.text, 10);
+          try {
+            out.innerHTML = CARDS.svg(rk, c.suit, 'app');
+            var sv = out.firstChild; sv.style.height = '210px'; sv.style.width = 'auto'; sv.style.display = 'block'; sv.style.margin = '0 auto';
+            sv.style.filter = 'drop-shadow(0 3px 6px rgba(0,0,0,.35))';
+            note.textContent = msg; inp.blur(); return;
+          } catch (err){}
+        }
         else { res = raw; msg = 'The Eye can\u2019t read that as a card, so it would show it as typed.'; }
       }
       out.textContent = res; note.textContent = msg;
@@ -2026,9 +2038,27 @@ var CARDS = (function(){
       mode = this.getAttribute('data-mode');
       for (var k = 0; k < modes.length; k++) modes[k].classList.toggle('on', modes[k] === this);
       hint.textContent = HINTS[mode];
-      inp.value = ''; showTyping(); clearResult();
+      inp.value = ''; locked = false; secret = ''; showTyping(); clearResult();
     });
-    inp.addEventListener('input', function(){ showTyping(); clearResult(); });
+    // double-space lock, like the real app: two quick spaces (or the iPhone's ". " shortcut) lock the secret in
+    function lockIn(){
+      inp.value = inp.value.replace(/[\s.]+$/, '');
+      if (!inp.value){ lastSp = 0; return; }
+      locked = true; secret = inp.value; lockedLen = secret.length; lastSp = 0;
+      showTyping();
+    }
+    inp.addEventListener('input', function(e){
+      var now = Date.now(), v = inp.value, d = e.data;
+      if (locked){
+        if (v.length < lockedLen){ locked = false; secret = ''; } // backed into the secret: unlock
+        else { showTyping(); clearResult(); return; }
+      }
+      var hasSecret = v.replace(/\s+/g, '').length > 0;
+      if (hasSecret && /[^\s.]\.\s$/.test(v) && (e.inputType === 'insertReplacementText' || d === ' ' || d === '. ' || d === '.\u00a0')){ lockIn(); clearResult(); return; }
+      if (hasSecret && /\s\s$/.test(v) && lastSp && now - lastSp < 600){ lockIn(); clearResult(); return; }
+      lastSp = (d === ' ') ? now : 0;
+      showTyping(); clearResult();
+    });
     inp.addEventListener('focus', function(){ box.classList.add('focus'); });
     inp.addEventListener('blur', function(){ box.classList.remove('focus'); });
     inp.addEventListener('keydown', function(e){ if (e.key === 'Enter'){ e.preventDefault(); inp.blur(); } });
