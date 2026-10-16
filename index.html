@@ -1297,11 +1297,16 @@ var CARDS = (function(){
   }
 
   var lastEightBall = -1;
-  function nextEightBallAnswer(){
+  function nextEightBallAnswer(onlyYes){
+    var n = onlyYes ? 10 : EIGHT_BALL.length; // the first ten answers are the yeses
     var i;
-    do { i = Math.floor(Math.random() * EIGHT_BALL.length); } while (i === lastEightBall);
+    do { i = Math.floor(Math.random() * n); } while (i === lastEightBall && n > 1);
     lastEightBall = i;
     return EIGHT_BALL[i];
+  }
+  // a few questions always get a yes
+  function isAlwaysYes(text){
+    return /\bhot\s+bod(?:y|ies|s)?\b/i.test(String(text || ''));
   }
 
   var THIN_QUESTION_WORD_LIMIT = 6; // questions shorter than this count as thin
@@ -1691,7 +1696,7 @@ var CARDS = (function(){
       }
     } else {
       if (isYesNoQuestion(asked.question)){
-        answer = nextEightBallAnswer();
+        answer = nextEightBallAnswer(isAlwaysYes(asked.question));
       } else {
         answer = (asked.words >= THIN_QUESTION_WORD_LIMIT)
           ? nextFullFailurePhrase()
