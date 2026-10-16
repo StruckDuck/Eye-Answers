@@ -1389,16 +1389,16 @@ var CARDS = (function(){
   var SENTENCE_TEMPLATES = {
     name: [
       ['I am sensing the name', null], [null, 'is the obvious choice'],
-      ['A name rises from your thoughts', null], ['Someone answers to the name', null],
-      ['Your mind keeps returning to', null]
+      ['A name rises from your thoughts...', null], ['Someone answers to the name', null],
+      ['My mind keeps returning to', null]
     ],
     number: [
-      ['The number is', null], ['I counted the beats of your thought', null],
-      [null, 'the number you tried to hide'], ['The digits are clear', null],
-      ['Your number, without a doubt', null]
+      ['The number is', null], ['I counted the beats of your thought...', null],
+      [null, 'the number you tried to hide'], ['The digits are clear...', null],
+      ['Your number, without a doubt, is', null]
     ],
     color: [
-      ['I see the color', null], ['A color floods my vision', null],
+      ['I see the color', null], ['A color floods my vision...', null],
       [null, 'surrounds your thoughts'], ['The color of your mind is', null],
       [null, 'there is no doubt']
     ],
@@ -1413,8 +1413,8 @@ var CARDS = (function(){
       ['Your thoughts stop at', null]
     ],
     animal: [
-      ['A creature stirs in your mind', null], ['I hear it breathing', null],
-      [null, 'I see its eyes'], ['The animal in your mind is', null],
+      ['A creature stirs in your mind...', null], ['I hear it breathing...', null],
+      [null, 'I see its eyes...'], ['The animal in your mind is', null],
       ['I sense the animal', null]
     ],
     city: [
@@ -1463,13 +1463,13 @@ var CARDS = (function(){
   // left alone and stay in the mix for every question.
   // ------------------------------------------------------------
   var PERSONAL = {
-    name:   { 2: ['A name rises from {p} thoughts', null], 4: ['{P} mind keeps returning to', null] },
-    number: { 1: ['I counted the beats of {p} thought', null], 2: [null, 'the number {S} tried to hide'],
-              4: ['{P} number, without a doubt', null] },
+    name:   { 2: ['A name rises from {p} thoughts...', null] },
+    number: { 1: ['I counted the beats of {p} thought...', null], 2: [null, 'the number {S} tried to hide'],
+              4: ['{P} number, without a doubt, is', null] },
     color:  { 2: [null, 'surrounds {p} thoughts'], 3: ['The color of {p} mind is', null] },
     month:  { 1: ['{P} {mod}month is', null], 2: [null, 'is circled in {p} mind'] },
     day:    { 1: ['{P} {mod}day is', null], 2: [null, 'is circled in {p} mind'], 4: ['{P} thoughts stop at', null] },
-    animal: { 0: ['A creature stirs in {p} mind', null], 3: ['The animal in {p} mind is', null] },
+    animal: { 0: ['A creature stirs in {p} mind...', null], 3: ['The animal in {p} mind is', null] },
     city:   { 0: ['In {p} mind, {S} {be} standing in', null], 1: ['{S} {be} thinking of', null],
               2: [null, 'pulls at {p} thoughts'] },
     year:   { 2: [null, 'is etched in {p} memory'], 4: ['{P} mind drifts back to', null] },
