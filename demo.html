@@ -429,6 +429,7 @@
 .coach-title{font-size:1.05rem;font-weight:600;color:#fff;margin:0 0 8px}
 .coach-text{font-size:.95rem;line-height:1.45;margin:0}
 .coach-text b{font-weight:700;color:#fff}
+.coach-note{font-size:.8rem;line-height:1.35;margin:8px 0 0;opacity:.78}
 .coach-sub{font-size:.88rem;line-height:1.4;margin:8px 0 0;opacity:.85}
 .coach-warn{color:#FFC2B3;font-weight:600;opacity:1}
 .coach-target{margin:8px 0 0;font-size:.95rem;line-height:1.45;word-break:break-word}
@@ -447,6 +448,7 @@
 #coachPanel.tight{padding:12px 16px 10px}
 #coachPanel.tight .coach-text,#coachPanel.tight .coach-target{font-size:.88rem;line-height:1.35}
 #coachPanel.tight .coach-row{margin-top:10px}
+#coachPanel.tight .coach-note{font-size:.76rem;line-height:1.3;margin-top:6px}
 #coachChip{position:fixed;left:12px;bottom:12px;z-index:9001;display:none;font:600 .88rem -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:8px 12px;border-radius:8px;border:1px solid rgba(234,225,200,.5);background:#41504F;color:#EAE1C8;cursor:pointer}
 #coachChip.show{display:block}
 #coachSwipe{position:fixed;z-index:8999;pointer-events:none;display:none;width:0;height:0}
@@ -457,6 +459,14 @@
 @keyframes coachSwipe{0%{transform:translateY(-110px);opacity:0}15%{opacity:1}75%{opacity:1}100%{transform:translateY(110px);opacity:0}}
 @media (prefers-reduced-motion:reduce){#coachRing{animation:none}.coach-dot{animation:none}}
 
+
+#coachPanel.tight2{padding:9px 14px 8px}
+#coachPanel.tight2 .coach-title{font-size:.95rem;margin-bottom:5px}
+#coachPanel.tight2 .coach-text,#coachPanel.tight2 .coach-target{font-size:.84rem;line-height:1.3}
+#coachPanel.tight2 .coach-note{font-size:.72rem;line-height:1.28;margin-top:5px}
+#coachPanel.tight2 .coach-row{margin-top:7px}
+#coachPanel.tight2 .coach-btn{padding:7px 14px;font-size:.88rem}
+#coachPanel.tight2 .coach-skip{padding:4px}
 </style>
 </head>
 <body>
@@ -538,7 +548,7 @@
       <button class="secret-back" id="secretBack" type="button">&larr; Back</button>
       <h2 class="menu-h2">Advanced Handling</h2>
       <details class="deep-sec" open>
-        <summary>Category answers</summary>
+        <summary>Category words</summary>
         <p>If you enter a secret and your question contains one of these category words, The Eye answers in a full sentence that is relevant to that category.</p>
         <p class="deep-cats">Name, Number, Color, Month, Day,<br>Animal, City, Food, Year, Card</p>
         <p>Examples:</p>
@@ -2092,7 +2102,7 @@
     { cat: 'city',   word: 'Paris',     q: 'Can you guess what city {N} is thinking of?',   thing: 'a city' },
     { cat: 'food',   word: 'Pizza',     q: 'Can you guess {N}\u2019s favorite food?',          thing: '{p} favorite food' }
   ];
-  var SECRET = '', WORD = '', QUESTION = '', VOL = NAMES[0], THING = '', lastCat = '', lastName = '';
+  var SECRET = '', WORD = '', CAT = '', QUESTION = '', VOL = NAMES[0], THING = '', lastCat = '', lastName = '';
   try { lastCat = localStorage.getItem('eyeDemoCat') || ''; lastName = localStorage.getItem('eyeDemoName') || ''; } catch (e) {}
   function fill(t){ return t.replace(/\{N\}/g, VOL.n).replace(/\{s\}/g, VOL.s).replace(/\{p\}/g, VOL.p); }
   function pickExample(){
@@ -2101,7 +2111,7 @@
     var nm;
     tries = 0;
     do { nm = NAMES[Math.floor(Math.random() * NAMES.length)]; tries++; } while (nm.n === lastName && tries < 20);
-    VOL = nm; WORD = ex.word; SECRET = ex.word.toLowerCase(); QUESTION = fill(ex.q); THING = fill(ex.thing);
+    VOL = nm; CAT = ex.cat; WORD = ex.word; SECRET = ex.word.toLowerCase(); QUESTION = fill(ex.q); THING = fill(ex.thing);
     lastCat = ex.cat; lastName = nm.n;
     try { localStorage.setItem('eyeDemoCat', lastCat); localStorage.setItem('eyeDemoName', lastName); } catch (e) {}
   }
@@ -2153,11 +2163,12 @@
     }
     panel.style.transform = 'none'; panel.style.bottom = 'auto';
     panel.style.left = left + 'px'; panel.style.width = w + 'px';
-    panel.classList.remove('tight'); panel.style.maxHeight = ''; panel.style.overflowY = '';
+    panel.classList.remove('tight'); panel.classList.remove('tight2'); panel.style.maxHeight = ''; panel.style.overflowY = '';
     if (top === null){ top = Math.max(margin, limit - panel.offsetHeight - margin); }
     var h = panel.offsetHeight;
     if (top + h > limit - 8){
       panel.classList.add('tight'); h = panel.offsetHeight;
+      if (top + h > limit - 8){ panel.classList.add('tight2'); h = panel.offsetHeight; }
       if (step >= 7 && top + h > limit - 8) top = Math.max(margin, limit - h - margin);
     }
     var avail = limit - top - 8;
@@ -2212,7 +2223,7 @@
       show(head(5, 'Lock it in') + '<p class="coach-text">Tap the zit again, or double-tap the space bar.</p>' + foot('')); return;
     }
     if (n === 6){
-      target = QUESTION;
+      sawKb = false; startLen = box.value.length;
       setRing(box, '');
       renderFinish(); return;
     }
@@ -2254,17 +2265,18 @@
   }
   var lastType = '';
   var gotIt = false;
-  function renderFinish(warn){
-    var v = norm(box.value), q = norm(QUESTION), html = '', i = 0;
-    var ok = q.indexOf(v) === 0 || v.indexOf(q) === 0;
-    // show what is already in the box dimmed, the rest bold
-    var shown = box.value.length;
-    html = '<span class="done">' + esc(QUESTION.slice(0, shown)) + '</span>' + '<span class="todo">' + esc(QUESTION.slice(shown)) + '</span>';
-    if (!ok){ html = '<span class="bad">' + esc(box.value) + '</span>'; }
+  function renderFinish(){
     show(head(6, 'Finish the question') +
-      '<p class="coach-text">Type the rest so it reads naturally:</p>' +
-      '<p class="coach-target">' + html + '</p>' +
-      (!ok ? '<p class="coach-sub coach-warn">That’s not quite it. Delete back to the part that matches, or tap Reset and start over.</p>' : '') + foot(''));
+      '<p class="coach-text">Finish the sentence however you’d like. Example: <b>' + esc(QUESTION) + '</b></p>' +
+      '<p class="coach-note">Including a category word like “' + CAT + '” makes the reveal read as a full sentence. Visit the Advanced Handling page in the secret menu for more info on Category words.</p>' +
+      foot('Done typing'));
+  }
+  // step 6 bookkeeping: the keyboard has to have been open at some point before its closing counts as "done"
+  var sawKb = false, startLen = 0;
+  function kbOpen(){
+    var kb = document.getElementById('vkb'), vk = false;
+    if (kb){ var r = kb.getBoundingClientRect(); vk = r.height > 0 && r.top < window.innerHeight - 4; }
+    return document.activeElement === box || vk;
   }
 
   var blk = document.getElementById('coachBlock');
@@ -2289,8 +2301,10 @@
     if (step === 5 && c.locked){ go(6); return; }
     if (step === 5 && c.buffer.length > 0 && c.buffer.toLowerCase().indexOf(SECRET) !== 0){ return; }
     if (step === 6){
-      var v = norm(box.value);
-      if (v.length >= norm(QUESTION).length && v.indexOf(norm(QUESTION)) === 0){ try { box.blur(); } catch (e) {} go(7); return; }
+      if (eyeWin.querySelector('.reveal-answer')){ go(8); return; }
+      var open = kbOpen();
+      if (open) sawKb = true;
+      else if (sawKb && box.value.length > startLen){ go(7); return; }
       renderFinish(); return;
     }
     if (step === 7 && eyeWin.querySelector('.reveal-answer')){ go(8); return; }
@@ -2300,7 +2314,7 @@
   function onClick(e){
     var a = e.target && e.target.getAttribute && e.target.getAttribute('data-a');
     if (!a) return;
-    if (a === 'next'){ if (step === 4 && !gotIt){ gotIt = true; syncBlock(); renderType(); } else { go(step + 1); } }
+    if (a === 'next'){ if (step === 4 && !gotIt){ gotIt = true; syncBlock(); renderType(); } else { if (step === 6){ try { box.blur(); } catch (err){} } go(step + 1); } }
     else if (a === 'skip'){ window.location.href = 'index.html?menu'; }
     else if (a === 'again'){
       panel.classList.remove('show'); swipeOn = false; placeSwipe(); setRing(null);
