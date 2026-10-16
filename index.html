@@ -1449,15 +1449,18 @@ var CARDS = (function(){
     ['city', /\b(?:city|cities)\b/], ['food', /\bfoods?\b/], ['year', /\byear\b/], ['card', /\bcard\b/]
   ];
 
-  // earliest keyword in the question wins
+  // earliest keyword in the question wins. "name" is also a verb ("Can you name the
+  // animal?"), so it only counts when no other category word is in the question
   function detectCategory(question){
     var q = (question || '').toLowerCase();
-    var best = null, bestIdx = Infinity;
+    var best = null, bestIdx = Infinity, nameFound = false;
     for (var i = 0; i < CATEGORY_PATTERNS.length; i++){
       var m = CATEGORY_PATTERNS[i][1].exec(q);
-      if (m && m.index < bestIdx){ bestIdx = m.index; best = CATEGORY_PATTERNS[i][0]; }
+      if (!m) continue;
+      if (CATEGORY_PATTERNS[i][0] === 'name'){ nameFound = true; continue; }
+      if (m.index < bestIdx){ bestIdx = m.index; best = CATEGORY_PATTERNS[i][0]; }
     }
-    return best;
+    return best || (nameFound ? 'name' : null);
   }
 
 
