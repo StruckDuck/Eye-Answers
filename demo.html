@@ -182,61 +182,67 @@
     letter-spacing:.02em;
   }
 
-  /* ---- secret backstage instructions ---- */
+  /* ---- secret menu: the same content as find.html, full screen ---- */
   .secret-overlay{
     position:fixed; inset:0;
-    background: rgba(20,24,23,.72);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:24px;
+    background: var(--ink);
     z-index:100;
     opacity:0;
     pointer-events:none;
     transition: opacity .2s ease;
   }
-  .secret-overlay.open{
-    opacity:1;
-    pointer-events:auto;
-  }
+  .secret-overlay.open{ opacity:1; pointer-events:auto; }
   .secret-panel{
-    position:relative;
-    width:100%; max-width:420px;
-    max-height:88vh;
+    position:absolute; inset:0;
     overflow-y:auto; -webkit-overflow-scrolling:touch;
     background: var(--ink);
     color:#EAE1C8;
-    border-radius:10px;
-    padding:26px 20px 20px;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    box-shadow: 0 10px 40px rgba(0,0,0,.5);
+    font-size:1.05rem; line-height:1.55;
+    padding: max(28px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
   }
-  .secret-panel h2{
-    margin:0 0 14px;
-    font-size:1.05rem;
-    font-weight:600;
-    color:#fff;
-  }
-  .secret-panel ol{
-    margin:0; padding-left:1.2em;
-    font-size:.88rem;
-    line-height:1.45;
-  }
-  .secret-panel li{ margin-bottom:.5em; }
-  .secret-panel li:last-child{ margin-bottom:0; }
-  .secret-deeper{
-    display:block; width:100%; margin-top:18px;
-    background:none; color:#EAE1C8;
-    border:1px solid rgba(234,225,200,.5); border-radius:8px;
-    font:inherit; font-weight:600; font-size:.95rem;
-    padding:11px 16px; cursor:pointer;
+  #secretMain, #secretDeep{ max-width:560px; margin:0 auto; }
+  .menu-head{ text-align:center; padding-bottom:26px; border-bottom:1px solid rgba(234,225,200,.25); }
+  .menu-head img{ width:92px; height:92px; border-radius:20px; display:block; margin:0 auto 14px; }
+  .menu-title, .menu-h2{ font-family:'Monthoers', Georgia, serif; font-weight:400; color:#fff; letter-spacing:.02em; margin:0; }
+  .menu-title{ font-size:2.4rem; line-height:1.05; text-wrap:balance; }
+  .menu-sec{ padding:26px 0; border-bottom:1px solid rgba(234,225,200,.25); }
+  .menu-h2{ font-size:1.7rem; margin-bottom:12px; }
+  .secret-panel p{ margin:0 0 .9em; }
+  .secret-panel p:last-child{ margin-bottom:0; }
+  .menu-cta{ padding:30px 0 10px; display:flex; flex-direction:column; gap:12px; }
+  .menu-btn{
+    display:block; width:100%; max-width:420px; margin:0 auto;
+    background:none; color:#EAE1C8; text-decoration:none; text-align:center;
+    border:1px solid rgba(234,225,200,.6); border-radius:8px;
+    font:inherit; font-weight:600; font-size:1.05rem; padding:15px 16px; cursor:pointer;
     -webkit-tap-highlight-color: transparent;
   }
-  .secret-deeper:hover{ background:rgba(234,225,200,.08); }
-  a.secret-deeper{ text-align:center; text-decoration:none; box-sizing:border-box; margin-top:12px; }
+  .menu-btn:hover, .menu-btn:focus-visible{ background:rgba(234,225,200,.1); }
+  .menu-btn.main{ background:#EAE1C8; color:var(--ink); border-color:#EAE1C8; }
+  .menu-btn.main:hover, .menu-btn.main:focus-visible{ background:#fff; }
+  .menu-links{ margin-top:26px; padding-top:22px; border-top:1px solid rgba(234,225,200,.25); display:flex; flex-direction:column; gap:22px; }
+  .menu-coffee, .menu-insta{ display:flex; align-items:center; gap:16px; }
+  .menu-coffee{ text-decoration:none; color:#EAE1C8; font-weight:600; -webkit-tap-highlight-color: transparent; }
+  .menu-coffee img{ display:block; width:120px; height:auto; flex:none; transition:transform .12s ease; }
+  .menu-coffee:active img{ transform:translateY(3px) scale(.97); }
+  .menu-insta svg{ display:block; width:120px; height:115px; flex:none; color:#EAE1C8; }
+  .menu-insta-links{ display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .menu-insta-links a{ color:#EAE1C8; text-decoration:none; font-weight:600; font-size:.95rem; overflow-wrap:anywhere; }
+  .menu-insta-links a:hover{ text-decoration:underline; }
+  .menu-foot{ text-align:center; font-size:.78rem; opacity:.6; padding-top:22px; }
   .secret-back{
     background:none; border:none; color:#EAE1C8;
-    font:inherit; font-size:.88rem; padding:0 0 10px; cursor:pointer;
+    font:inherit; font-size:.95rem; padding:0 0 14px; cursor:pointer;
+  }
+  .secret-close{
+    position:fixed; z-index:3;
+    top:max(8px, env(safe-area-inset-top)); right:max(8px, env(safe-area-inset-right));
+    width:44px; height:44px;
+    background:rgba(65,80,79,.9); border:none; border-radius:50%;
+    color:#EAE1C8; font-size:1.9rem; line-height:1;
+    padding:0 0 3px; cursor:pointer;
+    -webkit-tap-highlight-color: transparent;
   }
   #secretDeep[hidden]{ display:none; }
   .deep-sec{ border-top:1px solid rgba(234,225,200,.2); padding:10px 0; }
@@ -253,33 +259,6 @@
   .deep-sec li{ margin-bottom:.35em; }
   .deep-cats{ font-weight:700; color:#fff; }
   #secretMain[hidden]{ display:none; }
-  .secret-links{
-    margin-top:20px; padding-top:16px;
-    border-top:1px solid rgba(234,225,200,.25);
-    display:flex; flex-direction:column; gap:12px; align-items:stretch;
-  }
-  .secret-coffee{
-    display:flex; flex-direction:column; align-items:center; gap:6px;
-    text-decoration:none; color:#EAE1C8;
-    font-weight:600; font-size:.88rem;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .secret-coffee img{ display:block; width:160px; height:auto; transition:transform .12s ease; }
-  .secret-coffee:active img{ transform:translateY(3px) scale(.97); }
-  .secret-insta{
-    display:block; text-align:center; text-decoration:none;
-    color:#EAE1C8; font-size:.88rem;
-    padding:6px 0;
-  }
-  .secret-insta:hover, .secret-coffee:hover{ opacity:.85; }
-  .secret-close{
-    position:absolute; top:8px; right:10px;
-    background:none; border:none;
-    color:#EAE1C8; font-size:1.5rem; line-height:1;
-    padding:6px 10px;
-    cursor:pointer;
-    -webkit-tap-highlight-color: transparent;
-  }
 
   /* the art is scaled to cover the screen (--stage-w). tablets and desktop
      fit the full art instead, since filling would crop The Eye and push the
@@ -443,7 +422,8 @@
 #coachBlock.show{display:block}
 .coach-card,#coachPanel{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#EAE1C8;background:#41504F;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
 .coach-card{max-width:420px;width:100%;padding:26px 20px 20px;text-align:left}
-.coach-swatch{width:72px;height:72px;margin:4px 0 14px;border-radius:50%;background:#2563d6;border:2px solid #EAE1C8}
+.coach-slipwrap{display:inline-block;margin:4px 0 16px 6px;filter:drop-shadow(0 5px 6px rgba(0,0,0,.4));transform:rotate(-3deg)}
+.coach-slip{min-width:150px;max-width:260px;padding:18px 26px 26px;background:repeating-linear-gradient(#F3EBD3 0 27px,#E3D8B8 27px 28px);color:#23304a;font-family:'Monthoers',Georgia,serif;font-size:2rem;line-height:1.1;text-align:center;overflow-wrap:anywhere;clip-path:polygon(0 0,100% 0,100% 94%,94% 100%,86% 95%,78% 100%,69% 94%,60% 100%,51% 95%,42% 100%,33% 94%,24% 100%,15% 95%,7% 100%,0 94%)}
 #coachPanel{position:fixed;left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:420px;z-index:9001;padding:18px 20px 14px;display:none;top:0}
 #coachPanel.show{display:block}
 .coach-title{font-size:1.05rem;font-weight:600;color:#fff;margin:0 0 8px}
@@ -515,35 +495,50 @@
   <div class="secret-panel">
     <button class="secret-close" id="secretClose" type="button" aria-label="Close">&times;</button>
     <div id="secretMain">
-    <h2>How this actually works</h2>
-    <ol>
-      <li><strong>Tap the zit.</strong> It's the bump above and to the right of The Eye. Nothing will appear to happen.</li>
-      <li><strong>Tap the question box and type the secret.</strong> The box spells &ldquo;Can you guess what they are thinking?&rdquo; no matter what you type. You have 37 characters.</li>
-      <li><strong>Tap the zit again, or double-tap the space bar.</strong> Either one locks the secret in.</li>
-      <li><strong>Finish the question.</strong> Type whatever you like to end the question.</li>
-      <li><strong>Backspace counts as a keystroke.</strong> It deletes a letter from the secret, but the sentence keeps spelling forward.</li>
-    </ol>
-    <button class="secret-deeper" id="secretDeeper" type="button">Dig deeper</button>
-    <a class="secret-deeper secret-watch" href="https://youtube.com/shorts/FALh6jvvJWU" target="_blank" rel="noopener noreferrer">Watch the tutorial</a>
-    <div class="secret-links">
-      <a class="secret-coffee" href="https://www.paypal.com/qrcodes/venmocs/d4c45dc4-b8a7-4582-be68-4916acf2c9b8?amount=5.00&amp;currency_code=USD&amp;created=1791899438.6351418" target="_blank" rel="noopener noreferrer" aria-label="Buy me a coffee">
-        <img src="assets/tip-mug.png?v=1" srcset="assets/tip-mug.png?v=1 1x, assets/tip-mug@2x.png?v=1 2x" width="160" height="154" alt="">
-        <span>Buy me a coffee</span>
-      </a>
-      <a class="secret-insta" href="https://www.instagram.com/the_eye_knows_all" target="_blank" rel="noopener noreferrer">Instagram: @the_eye_knows_all</a>
-      <a class="secret-insta" href="https://www.instagram.com/joshua_stacy_up_close" target="_blank" rel="noopener noreferrer">Instagram: @joshua_stacy_up_close</a>
-    </div>
+      <div class="menu-head">
+        <img src="assets/apple-touch-icon.png?v=6" alt="">
+        <h1 class="menu-title">The Eye Knows All</h1>
+      </div>
+
+      <section class="menu-sec">
+        <h2 class="menu-h2">What it looks like</h2>
+        <p>Ask a friend to think of something. A name, a color, a city. Have them write it down so that The Eye can&rsquo;t see or hear what they&rsquo;ve chosen.</p>
+        <p>You type a question into your phone, right in front of them, something like &ldquo;Can you guess what color Whitney is thinking of?&rdquo; Then you poke the eye.</p>
+        <p>It closes. It opens. Then it says, in a full sentence, exactly what they were thinking.</p>
+      </section>
+
+      <section class="menu-sec">
+        <h2 class="menu-h2">How it works</h2>
+        <p>The Eye doesn&rsquo;t read minds. You do all the work, and nobody sees it. Make sure you see what your friend writes down before you start.</p>
+        <p>Next to the question box is a secret button disguised as a gross zit. Tap it, and everything you type after is quietly saved as the secret answer, while the screen types out an innocent question for you. Tap it again to lock the secret in, finish your real question, and poke the eye. You have 37 characters including spaces to type the answer.</p>
+        <p>To everyone watching, you only typed a question. The Eye reveals the answer you secretly typed.</p>
+      </section>
+
+      <div class="menu-cta">
+        <a class="menu-btn main" href="demo.html">Try a demonstration</a>
+        <button class="menu-btn" id="secretDeeper" type="button">Advanced Handling</button>
+      </div>
+
+      <div class="menu-links">
+        <a class="menu-coffee" href="https://www.paypal.com/qrcodes/venmocs/d4c45dc4-b8a7-4582-be68-4916acf2c9b8?amount=5.00&amp;currency_code=USD&amp;created=1791899438.6351418" target="_blank" rel="noopener noreferrer" aria-label="Buy me a coffee">
+          <img src="assets/tip-mug.png?v=1" srcset="assets/tip-mug.png?v=1 1x, assets/tip-mug@2x.png?v=1 2x" width="120" height="115" alt="">
+          <span>Buy me a coffee</span>
+        </a>
+        <div class="menu-insta">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Instagram"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r=".6" fill="currentColor"/></svg>
+          <div class="menu-insta-links">
+            <a href="https://www.instagram.com/the_eye_knows_all" target="_blank" rel="noopener noreferrer">@the_eye_knows_all</a>
+            <a href="https://www.instagram.com/joshua_stacy_up_close" target="_blank" rel="noopener noreferrer">@joshua_stacy_up_close</a>
+          </div>
+        </div>
+      </div>
+      <div class="menu-foot">&copy; 2026 Joshua Stacy. All rights reserved.</div>
     </div>
     <div id="secretDeep" hidden>
       <button class="secret-back" id="secretBack" type="button">&larr; Back</button>
-      <h2>Dig deeper</h2>
+      <h2 class="menu-h2">Advanced Handling</h2>
       <details class="deep-sec" open>
-        <summary>Numbers</summary>
-        <p>This is useful for anyone whose phone keyboard separates the number and letter keys. Switching to numbers while seemingly typing a question could look suspicious if noticed.</p>
-        <p>Simply spell out any number between 0-100. If you type &ldquo;twelve&rdquo;, The Eye shows 12. If you type &ldquo;seventy five&rdquo; or &ldquo;seventyfive&rdquo; The Eye will show 75. Don&rsquo;t worry about misspelling a number, The Eye knows all.</p>
-      </details>
-      <details class="deep-sec">
-        <summary>Sentence answers</summary>
+        <summary>Category answers</summary>
         <p>If you enter a secret and your question contains one of these category words, The Eye answers in a full sentence that is relevant to that category.</p>
         <p class="deep-cats">Name, Number, Color, Month, Day,<br>Animal, City, Food, Year, Card</p>
         <p>Examples:</p>
@@ -552,6 +547,9 @@
           <li>Can you guess what color Whitney is picturing?</li>
           <li>Can you guess Rusty&rsquo;s favorite animal?</li>
         </ul>
+        <p><strong>Numbers</strong></p>
+        <p>This is useful for anyone whose phone keyboard separates the number and letter keys. Switching to numbers while seemingly typing a question could look suspicious if noticed.</p>
+        <p>Simply spell out any number between 0-100. If you type &ldquo;twelve&rdquo;, The Eye shows 12. If you type &ldquo;seventy five&rdquo; or &ldquo;seventyfive&rdquo; The Eye will show 75. Don&rsquo;t worry about misspelling a number, The Eye knows all.</p>
         <p><strong>Year</strong></p>
         <p>This one is also useful for anyone whose phone keyboard separates the number and letter keys.</p>
         <p>Simply spell out the last two digits of whatever year you want The Eye to guess within the past 100 years. Spell a number lower than the current year&rsquo;s last two digits and The Eye guesses that year from the 2000&rsquo;s, so &ldquo;thirteen&rdquo; shows 2013. Anything higher gives the 1900s, so &ldquo;seventy five&rdquo; shows 1975.</p>
@@ -686,6 +684,9 @@
 
   // double-space lock, shared by the native and the on-screen keyboard
   var DOUBLE_SPACE_MS = 600;
+  // the iPhone sends its double-space shortcut as a replacement edit of '.' followed
+  // by an ordinary space a few ms later. after the lock that space is swallowed
+  var swallowSpaceUntil = 0;
   function isDoubleSpace(text){
     var now = Date.now();
     var hasSecret = capture.buffer.replace(/\s+/g, '').length > 0;
@@ -712,6 +713,13 @@
     if (e.inputType === 'insertLineBreak' || e.inputType === 'insertParagraph'){
       e.preventDefault(); questionInput.blur(); return;
     }
+    if (swallowSpaceUntil){
+      var stillWaiting = Date.now() < swallowSpaceUntil;
+      if (stillWaiting && e.cancelable && e.inputType === 'insertText' && (e.data === ' ' || e.data === '\u00a0')){
+        swallowSpaceUntil = 0; e.preventDefault(); return;
+      }
+      if (!stillWaiting || e.inputType !== 'insertText') swallowSpaceUntil = 0;
+    }
     if (!capture.active) return; // normal mode: let the browser do its thing
 
     // Android keyboards send composition events the page cannot cancel. those
@@ -721,9 +729,16 @@
 
     if (e.inputType === 'insertText' || e.inputType === 'insertReplacementText' || e.inputType === 'insertFromPaste'){
       var text = e.data || '';
+      if (!text && e.dataTransfer){ try { text = e.dataTransfer.getData('text/plain') || ''; } catch (err){} }
       // the final commit of a word already counted while it was composed
       if (capture.comp && text === capture.comp){ capture.comp = ''; return; }
       capture.comp = '';
+      // the iPhone's double-space shortcut: a replacement edit of '.' for the space
+      // just typed, then a plain space. either way it is the lock
+      if (e.inputType === 'insertReplacementText' && text === '.' && /\s$/.test(capture.buffer) && capture.buffer.replace(/\s+/g, '').length > 0){
+        swallowSpaceUntil = Date.now() + 400;
+        lockByDoubleSpace(); return;
+      }
       // a double space locks the secret, like the second zit tap. the iPhone's
       // own double-space shortcut arrives as '. ', which counts the same
       if (isDoubleSpace(text)){ lockByDoubleSpace(); return; }
@@ -749,6 +764,17 @@
     var now = questionInput.value;
     var before = capture.shown;
     if (now === before) return;
+    // the iPhone turns a double space into '. ' when the box happens to end in a
+    // space (the decoy sentence does, at some lengths). when the keyboard sends
+    // that as an edit the page cannot cancel, it lands here: treat it as the lock
+    var replacedSpaceWithDot = (now.length === before.length && before.charAt(before.length - 1) === ' ' && now.charAt(now.length - 1) === '.' && now.slice(0, -1) === before.slice(0, -1));
+    if ((replacedSpaceWithDot || (/\.[ \u00a0]$/.test(now) && !/\.[ \u00a0]$/.test(before))) && capture.buffer.replace(/\s+/g, '').length > 0){
+      questionInput.value = before;
+      capture.comp = '';
+      lockByDoubleSpace();
+      try { questionInput.setSelectionRange(questionInput.value.length, questionInput.value.length); } catch (e){}
+      return;
+    }
     var pre = 0;
     var maxPre = Math.min(before.length, now.length);
     while (pre < maxPre && before.charAt(pre) === now.charAt(pre)) pre++;
@@ -781,7 +807,11 @@
       capture.comp = composing ? added : '';
     }
     for (i = 0; i < added.length; i++){
-      capture.buffer += added.charAt(i);
+      var ch = added.charAt(i);
+      if (ch === '\u00a0') ch = ' ';
+      // a double space must lock on this path too, not only on the cancelable one
+      if (isDoubleSpace(ch)){ lockByDoubleSpace(); break; }
+      capture.buffer += ch;
       advanceFiller();
     }
     capture.shown = questionInput.value;
@@ -1866,7 +1896,7 @@
   // ============================================================
   var secretMain = document.getElementById('secretMain');
   var secretDeep = document.getElementById('secretDeep');
-  function showSecretMain(){ secretDeep.hidden = true; secretMain.hidden = false; }
+  function showSecretMain(){ secretDeep.hidden = true; secretMain.hidden = false; var pn = secretOverlay.querySelector('.secret-panel'); if (pn) pn.scrollTop = 0; }
   function openSecretPanel(){ if (document.activeElement === questionInput) questionInput.blur(); showSecretMain(); secretOverlay.classList.add('open'); }
   function closeSecretPanel(){ secretOverlay.classList.remove('open'); }
   document.getElementById('secretDeeper').addEventListener('click', function(e){
@@ -1878,6 +1908,12 @@
     e.stopPropagation();
     showSecretMain();
   });
+
+  // coming back from the demo (index.html?menu) reopens the secret menu
+  if (/[?&]menu(&|=|$)/.test(location.search)){
+    openSecretPanel();
+    try { history.replaceState(null, '', location.pathname + location.hash); } catch (err) {}
+  }
 
   secretClose.addEventListener('click', function(e){
     e.stopPropagation();
@@ -2042,8 +2078,34 @@
   "use strict";
   var E = window.__eye;
   if (!E) return;
-  var SECRET = 'blue';
-  var QUESTION = "Can you guess what color Whitney is thinking of?";
+  var NAMES = [
+    { n: 'Whitney', s: 'she', p: 'her' }, { n: 'Elizabeth', s: 'she', p: 'her' },
+    { n: 'Rusty', s: 'he', p: 'his' }, { n: 'Lou', s: 'he', p: 'his' }
+  ];
+  // one fixed example per category; {N} is the volunteer, {s} she or he, {p} her or his
+  var EXAMPLES = [
+    { cat: 'color',  word: 'Red',       q: 'Can you guess what color {N} is thinking of?',  thing: 'a color' },
+    { cat: 'name',   word: 'Rebecca',   q: 'Can you guess the name of {N}\u2019s best friend?', thing: 'the name of {p} best friend' },
+    { cat: 'month',  word: 'September', q: 'Can you guess what month {N} was born in?',     thing: 'the month {s} was born in' },
+    { cat: 'day',    word: 'Friday',    q: 'Can you guess what day {N} is thinking of?',    thing: 'a day of the week' },
+    { cat: 'animal', word: 'Penguin',   q: 'Can you guess {N}\u2019s favorite animal?',        thing: '{p} favorite animal' },
+    { cat: 'city',   word: 'Paris',     q: 'Can you guess what city {N} is thinking of?',   thing: 'a city' },
+    { cat: 'food',   word: 'Pizza',     q: 'Can you guess {N}\u2019s favorite food?',          thing: '{p} favorite food' }
+  ];
+  var SECRET = '', WORD = '', QUESTION = '', VOL = NAMES[0], THING = '', lastCat = '', lastName = '';
+  try { lastCat = localStorage.getItem('eyeDemoCat') || ''; lastName = localStorage.getItem('eyeDemoName') || ''; } catch (e) {}
+  function fill(t){ return t.replace(/\{N\}/g, VOL.n).replace(/\{s\}/g, VOL.s).replace(/\{p\}/g, VOL.p); }
+  function pickExample(){
+    var ex, tries = 0;
+    do { ex = EXAMPLES[Math.floor(Math.random() * EXAMPLES.length)]; tries++; } while (ex.cat === lastCat && tries < 20);
+    var nm;
+    tries = 0;
+    do { nm = NAMES[Math.floor(Math.random() * NAMES.length)]; tries++; } while (nm.n === lastName && tries < 20);
+    VOL = nm; WORD = ex.word; SECRET = ex.word.toLowerCase(); QUESTION = fill(ex.q); THING = fill(ex.thing);
+    lastCat = ex.cat; lastName = nm.n;
+    try { localStorage.setItem('eyeDemoCat', lastCat); localStorage.setItem('eyeDemoName', lastName); } catch (e) {}
+  }
+  pickExample();
   var TOTAL = 8;
   // the secret menu is switched off during the demo (this is the real app with a guide on top)
   document.addEventListener('touchstart', function(e){
@@ -2124,15 +2186,15 @@
     if (n === 0){
       panel.classList.remove('show'); setRing(null);
       card.innerHTML = head(0, 'Practice run') +
-        '<p class="coach-text">This is the real app with a guide on top. Follow each step on your phone and you’ll perform the trick once, on a pretend friend named Whitney. It takes about a minute.</p>' +
+        '<p class="coach-text">This is the real app with a guide on top. Follow each step on your phone and you’ll perform the trick once, on a pretend friend named ' + VOL.n + '. It takes about a minute.</p>' +
         '<div class="coach-row"><button class="coach-skip" data-a="skip" type="button">Exit demo</button><button class="coach-btn" data-a="next" type="button">Start demonstration</button></div>';
       dim.classList.add('show'); return;
     }
     if (n === 1){
       panel.classList.remove('show'); setRing(null);
       card.innerHTML = head(1, 'The thought') +
-        '<div class="coach-swatch" aria-hidden="true"></div>' +
-        '<p class="coach-text">You have asked your friend Whitney to think of a color and write it down so The Eye can’t see what she wrote. You see that she wrote the color <b>blue</b>.</p>' +
+        '<div class="coach-slipwrap" aria-hidden="true"><div class="coach-slip">' + esc(WORD) + '</div></div>' +
+        '<p class="coach-text">You have asked your friend ' + VOL.n + ' to think of ' + THING + ' and write it down so The Eye can’t see what ' + VOL.s + ' wrote. You see that ' + VOL.s + ' wrote <b>' + esc(WORD) + '</b>.</p>' +
         '<div class="coach-row"><button class="coach-skip" data-a="skip" type="button">Exit demo</button><button class="coach-btn" data-a="next" type="button">Next</button></div>';
       dim.classList.add('show'); return;
     }
@@ -2182,11 +2244,11 @@
     var n = (E.cap().buffer || '').length;
     if (!gotIt){
       show(head(4, 'Type the secret') +
-        '<p class="coach-text">Tap the question box and begin to type the word <b>' + SECRET + '</b>. The screen will type a question instead of the word you are actually typing. This is exactly what is supposed to happen.</p>' + foot('Got it'));
+        '<p class="coach-text">Tap the question box and begin to type the word <b>' + esc(WORD) + '</b>. The screen will type a question instead of the word you are actually typing. This is exactly what is supposed to happen.</p>' + foot('Got it'));
       return;
     }
     show(head(4, 'Type the secret') +
-      '<p class="coach-text">Type <b>' + SECRET + '</b> into the question box. The question appears to type instead.</p>' +
+      '<p class="coach-text">Type <b>' + esc(WORD) + '</b> into the question box. The question appears to type instead.</p>' +
       '<p class="coach-count">' + n + ' of 37 characters including spaces</p>' +
       (warn ? '<p class="coach-sub coach-warn">' + warn + '</p>' : '') + foot(''));
   }
@@ -2218,7 +2280,7 @@
     if (step === 2 && c.active){ go(4); return; }
     if (step === 4){
       var b = (c.buffer || '').toLowerCase();
-      if (gotIt && b.length > 0 && SECRET.indexOf(b) !== 0 && b.indexOf(SECRET) !== 0){ renderType('That isn’t blue. Tap Reset, then start again from the zit.'); return; }
+      if (gotIt && b.length > 0 && SECRET.indexOf(b) !== 0 && b.indexOf(SECRET) !== 0){ renderType('That isn’t ' + esc(WORD) + '. Tap Reset, then start again from the zit.'); return; }
       if (!c.active && !c.locked && b.length === 0 && lastType === 'armed'){ lastType = ''; go(2); return; }
       lastType = c.active ? 'armed' : lastType;
       if (gotIt && b === SECRET){ go(5); return; }
@@ -2240,12 +2302,12 @@
     if (!a) return;
     if (a === 'next'){ if (step === 4 && !gotIt){ gotIt = true; syncBlock(); renderType(); } else { go(step + 1); } }
     else if (a === 'skip'){ window.location.href = 'index.html?menu'; }
-    else if (a === 'again'){ try { resetBtn.click(); } catch (err){} setTimeout(function(){ lastType = ''; go(1); }, 400); }
+    else if (a === 'again'){ try { resetBtn.click(); } catch (err){} setTimeout(function(){ lastType = ''; pickExample(); go(1); }, 400); }
     else if (a === 'open'){ window.location.href = 'index.html'; }
   }
   chip.addEventListener('click', function(){ try { resetBtn.click(); } catch (err){} setTimeout(function(){ start(); }, 400); });
 
-  function start(){ active = true; lastType = ''; chip.classList.remove('show'); go(0); }
+  function start(){ if (active === false && step > 0) pickExample(); active = true; lastType = ''; chip.classList.remove('show'); go(0); }
   function stop(){ active = false; swipeOn = false; placeSwipe(); panel.classList.remove('show'); dim.classList.remove('show'); setRing(null); chip.classList.add('show'); }
 
   window.addEventListener('resize', function(){ placeRing(); placePanel(); });
