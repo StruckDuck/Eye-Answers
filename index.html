@@ -260,9 +260,14 @@
   .prac-modes{ display:flex; gap:8px; margin:.8em 0 0; }
   .prac-mode{ flex:1; font:inherit; font-weight:600; font-size:.9rem; color:#EAE1C8; background:none; border:1px solid rgba(234,225,200,.5); border-radius:8px; padding:9px 6px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .prac-mode.on{ background:rgba(234,225,200,.18); border-color:#EAE1C8; color:#fff; }
-  .prac-in{ display:block; width:100%; box-sizing:border-box; margin:10px 0 0; font:inherit; font-size:16px; color:#fff; background:rgba(0,0,0,.18); border:1px solid rgba(234,225,200,.5); border-radius:8px; padding:11px 12px; }
-  .prac-in::placeholder{ color:rgba(234,225,200,.55); }
-  .prac-in:focus{ outline:none; border-color:#EAE1C8; }
+  .prac-box{ position:relative; margin:10px 0 0; }
+  .prac-decoy{ min-height:1.4em; font-size:1rem; color:#fff; background:rgba(0,0,0,.18); border:1px solid rgba(234,225,200,.5); border-radius:8px; padding:11px 12px; word-break:break-word; }
+  .prac-decoy.empty{ color:rgba(234,225,200,.55); }
+  .prac-box.focus .prac-decoy{ border-color:#EAE1C8; }
+  .prac-in{ position:absolute; inset:0; width:100%; height:100%; box-sizing:border-box; margin:0; padding:0 12px; border:0; background:transparent; color:transparent; caret-color:transparent; font-size:16px; opacity:.011; }
+  .prac-in:focus{ outline:none; }
+  .prac-typed{ font-size:.78rem; line-height:1.3; min-height:1.3em; margin:.45em 0 0; text-align:center; color:#EAE1C8; opacity:.75; word-break:break-word; }
+  .prac-go{ display:block; width:100%; margin:.7em 0 0; font:inherit; font-weight:600; font-size:1rem; color:#EAE1C8; background:none; border:1px solid rgba(234,225,200,.6); border-radius:8px; padding:12px 16px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .prac-out{ font-family:'Monthoers', Georgia, serif; color:#fff; font-size:2.4rem; line-height:1.1; text-align:center; min-height:1.3em; margin:.5em 0 0; word-break:break-word; }
   .deep-sec .prac-note{ min-height:1.3em; margin:.2em 0 0; text-align:center; opacity:.8; font-size:.82rem; }
   .deep-cats{ font-weight:700; color:#fff; }
@@ -526,13 +531,18 @@
         <p>For Card, type the rank and the suit of the card you want The Eye to guess. For the ace of hearts type &ldquo;a h&rdquo;, for the seven of clubs type &ldquo;seven c&rdquo;, jack of diamonds type &ldquo;j d&rdquo;, for the ten of spades type &ldquo;ten s&rdquo;. The space is optional, so &ldquo;ah&rdquo; and &ldquo;sevenc&rdquo; work too.</p>
         <p>Single letters work for the suit (h, d, c, s) and for face cards (a, j, q, k), so &ldquo;k h&rdquo; is the King of Hearts. The Eye answers with the rank and the suit&rsquo;s symbol, like 7 &clubs; or Queen &diams;.</p>
         <p><strong>Practice</strong></p>
-        <p>Pick a category, then type a secret to see what The Eye would show.</p>
+        <p id="pracHint">Spell a number. The decoy sentence will appear as you type.</p>
         <div class="prac-modes" id="pracModes" role="group" aria-label="Practice category">
           <button type="button" class="prac-mode on" data-mode="number">Number</button>
           <button type="button" class="prac-mode" data-mode="year">Year</button>
           <button type="button" class="prac-mode" data-mode="card">Card</button>
         </div>
-        <input class="prac-in" id="pracIn" type="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="done" placeholder="Type the secret" aria-label="Practice secret">
+        <div class="prac-box" id="pracBox">
+          <div class="prac-decoy" id="pracDecoy" aria-hidden="true"></div>
+          <input class="prac-in" id="pracIn" type="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="done" aria-label="Practice secret">
+        </div>
+        <div class="prac-typed" id="pracTyped" aria-live="off"></div>
+        <button type="button" class="prac-go" id="pracGo">Reveal</button>
         <div class="prac-out" id="pracOut" aria-live="polite"></div>
         <p class="prac-note" id="pracNote"></p>
       </details>
@@ -1880,37 +1890,57 @@
     showSecretMain();
   });
 
-  // practice box on the Advanced Handling page: type a secret, see what The Eye would show
+  // practice box on the Advanced Handling page: type a secret (the decoy sentence shows in the box),
+  // then press Reveal to see what The Eye would show
   (function(){
-    var inp = document.getElementById('pracIn'), out = document.getElementById('pracOut'), note = document.getElementById('pracNote');
+    var inp = document.getElementById('pracIn'), box = document.getElementById('pracBox'), decoy = document.getElementById('pracDecoy');
+    var typed = document.getElementById('pracTyped'), out = document.getElementById('pracOut'), note = document.getElementById('pracNote');
+    var hint = document.getElementById('pracHint'), go = document.getElementById('pracGo');
     var modes = document.querySelectorAll('.prac-mode'), mode = 'number';
     if (!inp) return;
-    function render(){
+    var HINTS = {
+      number: 'Spell a number. The decoy sentence will appear as you type.',
+      year: 'Spell a year, just the last two digits. The decoy sentence will appear as you type.',
+      card: 'Spell a playing card, like \u201cseven c\u201d. The decoy sentence will appear as you type.'
+    };
+    function clearResult(){ out.textContent = ''; note.textContent = ''; }
+    function showTyping(){
+      var n = Math.min(inp.value.length, FILLER.length);
+      decoy.textContent = n ? FILLER.slice(0, n) : 'Question';
+      decoy.classList.toggle('empty', !n);
+      typed.textContent = inp.value ? 'You typed: ' + inp.value : '';
+    }
+    function reveal(){
       var raw = inp.value.trim(), res = '', msg = '';
-      if (raw){
-        if (mode === 'number'){
-          var d = secretToDisplay(raw);
-          if (d === raw && wordsToNumber(raw) === null && !/^\d+$/.test(raw)) msg = 'The Eye can\u2019t read that as a number, so it would show it as typed.';
-          res = d;
-        } else if (mode === 'year'){
-          var base = secretToDisplay(raw), y = secretToYear(raw, base);
-          if (y === raw && wordsToNumber(raw) === null && !/^\d+$/.test(raw)) msg = 'The Eye can\u2019t read that as a year, so it would show it as typed.';
-          res = y;
-        } else {
-          var c = secretToCard(raw);
-          if (c) res = c.text + ' ' + SUIT_CHARS[c.suit];
-          else { res = raw; msg = 'The Eye can\u2019t read that as a card, so it would show it as typed.'; }
-        }
+      if (!raw){ clearResult(); note.textContent = 'Type a secret first.'; return; }
+      if (mode === 'number'){
+        var d = secretToDisplay(raw);
+        if (d === raw && wordsToNumber(raw) === null && !/^\d+$/.test(raw)) msg = 'The Eye can\u2019t read that as a number, so it would show it as typed.';
+        res = d;
+      } else if (mode === 'year'){
+        var y = secretToYear(raw, secretToDisplay(raw));
+        if (y === raw && wordsToNumber(raw) === null && !/^\d+$/.test(raw)) msg = 'The Eye can\u2019t read that as a year, so it would show it as typed.';
+        res = y;
+      } else {
+        var c = secretToCard(raw);
+        if (c) res = c.text + ' ' + SUIT_CHARS[c.suit];
+        else { res = raw; msg = 'The Eye can\u2019t read that as a card, so it would show it as typed.'; }
       }
       out.textContent = res; note.textContent = msg;
+      inp.blur();
     }
     for (var m = 0; m < modes.length; m++) modes[m].addEventListener('click', function(){
       mode = this.getAttribute('data-mode');
       for (var k = 0; k < modes.length; k++) modes[k].classList.toggle('on', modes[k] === this);
-      render();
+      hint.textContent = HINTS[mode];
+      inp.value = ''; showTyping(); clearResult();
     });
-    inp.addEventListener('input', render);
+    inp.addEventListener('input', function(){ showTyping(); clearResult(); });
+    inp.addEventListener('focus', function(){ box.classList.add('focus'); });
+    inp.addEventListener('blur', function(){ box.classList.remove('focus'); });
     inp.addEventListener('keydown', function(e){ if (e.key === 'Enter'){ e.preventDefault(); inp.blur(); } });
+    go.addEventListener('click', reveal);
+    showTyping();
   })();
 
   // coming back from the demo (index.html?menu) reopens the secret menu
