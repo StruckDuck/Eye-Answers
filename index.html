@@ -121,6 +121,16 @@
     z-index:7;
   }
 
+  /* eight ball mode: a second invisible hotspot on the lower-left blemish */
+  .zit-btn.zit2{ left:14.9%; top:73.6%; width:14%; height:4.6%; display:none; }
+  .eight-on .zit-btn.zit2{ display:block; }
+  .eight-set{ display:flex; flex-direction:column; gap:8px; margin-top:.7em; font-size:.88rem; }
+  .eight-set label{ display:flex; flex-direction:column; gap:4px; }
+  .eight-set .eight-row{ flex-direction:row; align-items:center; gap:10px; }
+  .eight-set input[type=text], .eight-set select{
+    font:inherit; padding:8px 10px; border-radius:8px; border:1px solid rgba(234,225,200,.4);
+    background:rgba(0,0,0,.25); color:#EAE1C8; }
+
   /* ---- public instructions drawer: one piece of art (panel + tab bump).
      closed = slid up until only the tab bump shows. all sizes are fractions
      of the drawer's own width so it scales with the art ---- */
@@ -458,6 +468,7 @@
       autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"
       enterkeyhint="done" aria-label="Question"></textarea>
     <button class="zit-btn" id="zitBtn" type="button" tabindex="-1" aria-label=""></button>
+    <button class="zit-btn zit2" id="zitBtn2" type="button" tabindex="-1" aria-label=""></button>
   </div>
 </div>
 
@@ -507,6 +518,15 @@
     <div id="secretDeep" hidden>
       <button class="secret-back" id="secretBack" type="button">&larr; Back</button>
       <h2 class="menu-h2">Advanced Handling</h2>
+      <details class="deep-sec">
+        <summary>Eight Ball mode</summary>
+        <p>A plainer mode: The Eye answers like a magic eight ball, with the secret dropped into a short answer. The lower-left blemish banks a secret: while you type it, your preset question fills in as the decoy, the next poke gives the preset answer, and the poke after that (any question the spectator types) reveals the banked secret.</p>
+        <div class="eight-set">
+          <label class="eight-row"><input type="checkbox" id="eightOn"> Eight Ball mode on</label>
+          <label>Preset question<input type="text" id="eightQ" autocomplete="off" autocapitalize="sentences" placeholder="Will I ever have a hot bod?"></label>
+          <label>Preset answer<select id="eightA"><option value="yes">Yes</option><option value="no">No</option><option value="random">Random</option></select></label>
+        </div>
+      </details>
       <details class="deep-sec" open>
         <summary>Category words</summary>
         <p>If you enter a secret and your question contains one of these category words, The Eye answers in a full sentence that is relevant to that category.</p>
@@ -698,6 +718,24 @@ var CARDS = (function(){
   // finishing the question however they like in the moment.
   var FILLER = 'Can you guess what they are thinking?';
 
+  // eight ball mode settings (kept on this device) and the banked secret
+  var EIGHT = { on:false, q:'', a:'random' };
+  var bankedSecret = '';
+  try {
+    var es = JSON.parse(window.localStorage.getItem('eyeEight') || 'null');
+    if (es){ EIGHT.on = !!es.on; EIGHT.q = String(es.q || ''); EIGHT.a = (es.a === 'yes' || es.a === 'no') ? es.a : 'random'; }
+  } catch(err){}
+  function saveEight(){ try { window.localStorage.setItem('eyeEight', JSON.stringify(EIGHT)); } catch(err){} }
+  (function(){
+    var on = document.getElementById('eightOn'), q = document.getElementById('eightQ'), a = document.getElementById('eightA');
+    var stage = document.getElementById('eyeStage');
+    function paint(){ stage.classList.toggle('eight-on', EIGHT.on); }
+    on.checked = EIGHT.on; q.value = EIGHT.q; a.value = EIGHT.a; paint();
+    on.addEventListener('change', function(){ EIGHT.on = on.checked; if (!EIGHT.on) bankedSecret = ''; paint(); saveEight(); });
+    q.addEventListener('input', function(){ EIGHT.q = q.value; saveEight(); });
+    a.addEventListener('change', function(){ EIGHT.a = a.value; saveEight(); });
+  })();
+
 
   // ============================================================
   // state
@@ -705,7 +743,7 @@ var CARDS = (function(){
   var state = { busy:false, revealed:false, holding:false };
 
   function freshCapture(){
-    return { active:false, locked:false, fillerPos:0, buffer:'', shown:'', comp:'', lastSpace:0 };
+    return { active:false, locked:false, fillerPos:0, buffer:'', shown:'', comp:'', lastSpace:0, bank:false, filler:'' };
   }
   var capture = freshCapture();
   // true once a question has been answered: its text stays in the box, but it
@@ -726,8 +764,9 @@ var CARDS = (function(){
   // and the visible text instead advances through FILLER.
   // ============================================================
   function advanceFiller(){
-    if (capture.fillerPos < FILLER.length){
-      questionInput.value += FILLER[capture.fillerPos];
+    var fill = capture.filler || FILLER;
+    if (capture.fillerPos < fill.length){
+      questionInput.value += fill[capture.fillerPos];
       capture.fillerPos += 1;
     }
     capture.shown = questionInput.value;
@@ -900,16 +939,15 @@ var CARDS = (function(){
   // cancels the synthetic mousedown/click chain entirely on iOS Safari)
   zitBtn.addEventListener('mousedown', function(e){ e.preventDefault(); });
 
-  zitBtn.addEventListener('click', function(e){
-    e.stopPropagation();
+  function zitToggle(bank){
     if (capture.locked) return;
-
     if (!capture.active){
       capture.active = true;
-      // pick up wherever the visible question text already is, so the
-      // operator can start typing the phrase manually and trigger the
-      // zit at any point
-      capture.fillerPos = questionSpent ? 0 : Math.min(questionInput.value.length, FILLER.length);
+      // the lower-left blemish banks the secret and uses the preset question as the decoy
+      capture.bank = !!bank;
+      capture.filler = (bank && EIGHT.q.trim()) ? EIGHT.q.trim() : '';
+      var fl = capture.filler || FILLER;
+      capture.fillerPos = questionSpent ? 0 : Math.min(questionInput.value.length, fl.length);
       capture.shown = questionInput.value;
     } else {
       capture.active = false;
@@ -917,6 +955,17 @@ var CARDS = (function(){
         capture.locked = true;
       }
     }
+  }
+  zitBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    zitToggle(false);
+  });
+  var zitBtn2 = document.getElementById('zitBtn2');
+  zitBtn2.addEventListener('mousedown', function(e){ e.preventDefault(); });
+  zitBtn2.addEventListener('click', function(e){
+    e.stopPropagation();
+    if (!EIGHT.on) return;
+    zitToggle(true);
   });
 
   // ============================================================
@@ -1678,6 +1727,59 @@ var CARDS = (function(){
     return str.toLowerCase().replace(/(^|[\s\-'])([a-z])/g, function(m, a, b){ return a + b.toUpperCase(); });
   }
 
+  // ------------------------------------------------------------
+  // eight ball mode answers. [ANSWER] marks where the secret goes. with a
+  // secret only the lines that carry the slot are used; without one every
+  // line is available and the slot reads "yes".
+  // ------------------------------------------------------------
+  var EB_YES = [
+    'Without a doubt, [ANSWER].', '[ANSWER] it is certain.', '[ANSWER], and you know it.',
+    'The signs are clear. [ANSWER].', 'Most likely.', '[ANSWER].', '[ANSWER] You may rely on it.',
+    'The outlook is bright.', 'All paths lead to [ANSWER].', 'I have seen it. [ANSWER].'
+  ];
+  var EB_ASK = [
+    'Your question is clouded by doubt. Ask again.', 'You are not ready to hear it. Ask later.',
+    'Quiet your mind, then ask again.', 'You asked too quickly. Ask again.', 'Your thoughts are scattered. Ask again.'
+  ];
+  var EB_NO = ['No.', 'Do not count on it.', 'The outlook is dark.', 'Very doubtful.', 'My sight says no.'];
+  var ebLast = '';
+  function ebPick(list){
+    var t;
+    do { t = list[Math.floor(Math.random() * list.length)]; } while (t === ebLast && list.length > 1);
+    ebLast = t;
+    return t;
+  }
+  function ebSentence(t){ return t.replace(/(^|[.!?] )([a-z])/g, function(m, a, b){ return a + b.toUpperCase(); }); }
+  // kind: 'yes', 'no' or 'any' (10 yes, 5 ask again, 5 no)
+  function ebStock(kind){
+    var list = kind === 'yes' ? EB_YES : kind === 'no' ? EB_NO : EB_YES.concat(EB_ASK, EB_NO);
+    return ebSentence(ebPick(list).replace('[ANSWER]', 'yes'));
+  }
+  var EB_RANK_WORDS = { '2':'Two','3':'Three','4':'Four','5':'Five','6':'Six','7':'Seven','8':'Eight','9':'Nine','10':'Ten' };
+  function ebSecretWord(secret, question){
+    var disp = secretToDisplay(secret);
+    var cat = detectCategory(question);
+    if (cat === 'name') return capitalizeName(disp);
+    var card = secretToCard(secret); // read by content, so "7c" or "ah" works without the word card
+    if (card){
+      var r = EB_RANK_WORDS[card.text] || card.text;
+      var su = card.suit.charAt(0).toUpperCase() + card.suit.slice(1) + 's';
+      return r + ' of ' + su;
+    }
+    if (cat === 'year') return secretToYear(secret, disp);
+    return disp;
+  }
+  function eightBallText(asked, secret){
+    if (asked.presetAnswer){
+      return ebStock(EIGHT.a === 'random' ? 'any' : EIGHT.a);
+    }
+    if (!secret) return ebStock(isAlwaysYes(asked.question) ? 'yes' : 'any');
+    var slots = EB_YES.filter(function(t){ return t.indexOf('[ANSWER]') >= 0; });
+    var word = ebSecretWord(secret, asked.question);
+    var line = ebPick(slots).replace('[ANSWER]', word);
+    return line.charAt(0).toUpperCase() + line.slice(1);
+  }
+
   // asked = { secret, words, question } taken at the moment of the poke, because the
   // field and the secret entry are cleared right then so a new question can
   // be started as soon as the answer is up
@@ -1696,7 +1798,9 @@ var CARDS = (function(){
       eyeContent.appendChild(qel);
       return;
     }
-    if (answer){
+    if (EIGHT.on){
+      answer = eightBallText(asked, secret);
+    } else if (answer){
       var category = detectCategory(asked.question);
       if (category){
         template = pickTemplate(category, detectSubject(asked.question, category));
@@ -1919,6 +2023,17 @@ var CARDS = (function(){
     // keep what the reveal needs, then clear the field and the secret entry
     // right away so the next question can be typed immediately
     var asked = { secret: capture.buffer, words: wordCount(questionInput.value), question: questionInput.value };
+    if (EIGHT.on){
+      if (capture.bank && capture.buffer.trim()){
+        // banked: this poke gives the preset answer, the secret waits for the next one
+        bankedSecret = capture.buffer;
+        asked.secret = '';
+        asked.presetAnswer = true;
+      } else if (!capture.buffer.trim() && bankedSecret){
+        asked.secret = bankedSecret;
+        bankedSecret = '';
+      }
+    }
     // the question stays in the box until it is tapped again
     questionSpent = true;
     capture = freshCapture();
@@ -2210,6 +2325,7 @@ var CARDS = (function(){
     questionInput.value = '';
     questionSpent = false;
     capture = freshCapture();
+    bankedSecret = '';
     state.revealed = false;
     showPupil();
 
