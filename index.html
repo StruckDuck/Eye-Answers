@@ -721,6 +721,7 @@ var CARDS = (function(){
   // eight ball mode settings (kept on this device) and the banked secret
   var EIGHT = { on:false, q:'', a:'random' };
   var bankedSecret = '';
+  var bankedArmed = false; // a second lower-left tap arms the banked reveal for the next poke
   try {
     var es = JSON.parse(window.localStorage.getItem('eyeEight') || 'null');
     if (es){ EIGHT.on = !!es.on; EIGHT.q = String(es.q || ''); EIGHT.a = (es.a === 'yes' || es.a === 'no') ? es.a : 'random'; }
@@ -731,7 +732,7 @@ var CARDS = (function(){
     var stage = document.getElementById('eyeStage');
     function paint(){ stage.classList.toggle('eight-on', EIGHT.on); }
     on.checked = EIGHT.on; q.value = EIGHT.q; a.value = EIGHT.a; paint();
-    on.addEventListener('change', function(){ EIGHT.on = on.checked; if (!EIGHT.on) bankedSecret = ''; paint(); saveEight(); });
+    on.addEventListener('change', function(){ EIGHT.on = on.checked; if (!EIGHT.on){ bankedSecret = ''; bankedArmed = false; } paint(); saveEight(); });
     q.addEventListener('input', function(){ EIGHT.q = q.value; saveEight(); });
     a.addEventListener('change', function(){ EIGHT.a = a.value; saveEight(); });
   })();
@@ -965,6 +966,11 @@ var CARDS = (function(){
   zitBtn2.addEventListener('click', function(e){
     e.stopPropagation();
     if (!EIGHT.on) return;
+    if (bankedSecret && !capture.active){
+      // a secret is already banked: this tap only arms (or disarms) its reveal, typing stays free
+      bankedArmed = !bankedArmed;
+      return;
+    }
     zitToggle(true);
   });
 
@@ -2029,9 +2035,10 @@ var CARDS = (function(){
         bankedSecret = capture.buffer;
         asked.secret = '';
         asked.presetAnswer = true;
-      } else if (!capture.buffer.trim() && bankedSecret){
+      } else if (!capture.buffer.trim() && bankedSecret && bankedArmed){
         asked.secret = bankedSecret;
         bankedSecret = '';
+        bankedArmed = false;
       }
     }
     // the question stays in the box until it is tapped again
@@ -2326,6 +2333,7 @@ var CARDS = (function(){
     questionSpent = false;
     capture = freshCapture();
     bankedSecret = '';
+    bankedArmed = false;
     state.revealed = false;
     showPupil();
 
