@@ -515,18 +515,19 @@
       </div>
       <div class="menu-foot">&copy; 2026 Joshua Stacy. All rights reserved.</div>
     </div>
-    <div id="secretDeep" hidden>
-      <button class="secret-back" id="secretBack" type="button">&larr; Back</button>
-      <h2 class="menu-h2">Advanced Handling</h2>
-      <details class="deep-sec">
-        <summary>Eight Ball mode</summary>
-        <p>A plainer mode: The Eye answers like a magic eight ball, with the secret dropped into a short answer. The lower-left blemish banks a secret: while you type it, your preset question fills in as the decoy, the next poke gives the preset answer, and the poke after that (any question the spectator types) reveals the banked secret.</p>
+    <div id="secretSecret" hidden>
+      <h2 class="menu-h2">Secret Secret Menu</h2>
+      <h3 class="menu-h2" style="margin-top:1em">Eight Ball mode</h3>
+        <p>A plainer mode: The Eye answers like a magic eight ball, with the secret dropped into a short answer. The lower-left blemish banks a secret: while you type it, your preset question fills in as the decoy, the next poke gives the preset answer. Tap the blemish again to arm the reveal, then hand over the phone: the next poke, with any question typed freely, shows the banked secret.</p>
         <div class="eight-set">
           <label class="eight-row"><input type="checkbox" id="eightOn"> Eight Ball mode on</label>
           <label>Preset question<input type="text" id="eightQ" autocomplete="off" autocapitalize="sentences" placeholder="Will I ever have a hot bod?"></label>
           <label>Preset answer<select id="eightA"><option value="yes">Yes</option><option value="no">No</option><option value="random">Random</option></select></label>
         </div>
-      </details>
+    </div>
+    <div id="secretDeep" hidden>
+      <button class="secret-back" id="secretBack" type="button">&larr; Back</button>
+      <h2 class="menu-h2">Advanced Handling</h2>
       <details class="deep-sec" open>
         <summary>Category words</summary>
         <p>If you enter a secret and your question contains one of these category words, The Eye answers in a full sentence that is relevant to that category.</p>
@@ -2085,6 +2086,13 @@ var CARDS = (function(){
     // a poke only counts as a question once something has been entered;
     // otherwise it is just a normal blink. the full reveal also runs right
     // after a previous one, so no RESET is needed between questions
+    // typing "secret secret menu" (no secret entered) and poking opens the hidden settings
+    if (!questionSpent && !(capture.buffer || '').trim() && /^\s*secret\s+secret\s+menu\s*[?.!]*\s*$/i.test(questionInput.value)){
+      questionInput.value = '';
+      capture = freshCapture();
+      openSecretSecret();
+      return;
+    }
     var entered = (!questionSpent && questionInput.value.trim() !== '') || (capture.buffer || '').trim() !== '';
     if (!entered){
       clearIdleBlink();
@@ -2111,7 +2119,9 @@ var CARDS = (function(){
   // ============================================================
   var secretMain = document.getElementById('secretMain');
   var secretDeep = document.getElementById('secretDeep');
-  function showSecretMain(){ secretDeep.hidden = true; secretMain.hidden = false; var pn = secretOverlay.querySelector('.secret-panel'); if (pn) pn.scrollTop = 0; }
+  var secretSecret = document.getElementById('secretSecret');
+  function openSecretSecret(){ if (document.activeElement === questionInput) questionInput.blur(); secretMain.hidden = true; secretDeep.hidden = true; secretSecret.hidden = false; var pn = secretOverlay.querySelector('.secret-panel'); if (pn) pn.scrollTop = 0; secretOverlay.classList.add('open'); }
+  function showSecretMain(){ secretSecret.hidden = true; secretDeep.hidden = true; secretMain.hidden = false; var pn = secretOverlay.querySelector('.secret-panel'); if (pn) pn.scrollTop = 0; }
   function openSecretPanel(){ if (document.activeElement === questionInput) questionInput.blur(); showSecretMain(); secretOverlay.classList.add('open'); }
   function closeSecretPanel(){ secretOverlay.classList.remove('open'); }
   document.getElementById('secretDeeper').addEventListener('click', function(e){
