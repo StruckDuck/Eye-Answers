@@ -1783,7 +1783,7 @@ var CARDS = (function(){
     if (!secret) return ebStock(isAlwaysYes(asked.question) ? 'yes' : 'any');
     var slots = EB_YES.filter(function(t){ return t.indexOf('[ANSWER]') >= 0; });
     var word = ebSecretWord(secret, asked.question);
-    var line = ebPick(slots).replace('[ANSWER]', word);
+    var line = ebSentence(ebPick(slots).replace('[ANSWER]', word));
     return line.charAt(0).toUpperCase() + line.slice(1);
   }
 
@@ -2095,6 +2095,8 @@ var CARDS = (function(){
     }
     var entered = (!questionSpent && questionInput.value.trim() !== '') || (capture.buffer || '').trim() !== '';
     if (!entered){
+      // an empty poke right after a reveal is a soft reset
+      if (state.revealed){ resetAll(true); return; }
       clearIdleBlink();
       playQuickBlink(scheduleIdleBlink);
       return;
@@ -2323,7 +2325,10 @@ var CARDS = (function(){
   // ============================================================
   var RESET_HOLD_MS = 300;
 
-  async function resetAll(){
+  // soft === true: a poke after a reveal. same shut-and-reopen, but the banked secret
+  // and any armed secret entry are kept; only the question box and pupil are refreshed
+  async function resetAll(soft){
+    soft = (soft === true);
     if (!ready) return;
     if (state.busy && !state.holding) return;
     var alreadyShut = state.holding;
@@ -2341,9 +2346,13 @@ var CARDS = (function(){
     drawFrame(CLOSED_A);
     questionInput.value = '';
     questionSpent = false;
-    capture = freshCapture();
-    bankedSecret = '';
-    bankedArmed = false;
+    if (!soft){
+      capture = freshCapture();
+      bankedSecret = '';
+      bankedArmed = false;
+    } else {
+      capture.fillerPos = 0; capture.shown = '';
+    }
     state.revealed = false;
     showPupil();
 
@@ -2354,7 +2363,7 @@ var CARDS = (function(){
     finishSequence();
     if (my === runId){ scheduleIdleBlink(); scheduleSaccade(); }
   }
-  resetBtn.addEventListener('click', resetAll);
+  resetBtn.addEventListener('click', function(){ resetAll(); });
 
   // ============================================================
   // init: nothing is shown or pokeable until every image is in
