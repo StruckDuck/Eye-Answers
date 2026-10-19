@@ -121,8 +121,16 @@
     z-index:7;
   }
 
+  /* the poke hotspot: only the white of the eye, in stage fractions so it scales with the art */
+  .poke-zone{
+    position:absolute; left:19.4%; top:36.6%; width:62.2%; height:27.5%;
+    background:none; border:none; padding:0; margin:0; cursor:pointer;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    z-index:8;
+  }
+
   /* eight ball mode: a second invisible hotspot on the lower-left blemish */
-  .zit-btn.zit2{ left:14.9%; top:73.6%; width:14%; height:4.6%; display:none; }
+  .zit-btn.zit2{ left:14.9%; top:73.6%; width:20%; height:11.5%; display:none; }
   .eight-on .zit-btn.zit2{ display:block; }
   .eight-set{ display:flex; flex-direction:column; gap:8px; margin-top:.7em; font-size:.88rem; }
   .eight-set label{ display:flex; flex-direction:column; gap:4px; }
@@ -303,7 +311,7 @@
     width: var(--stage-w);
     aspect-ratio: 910 / 1618;
     transform: translate(-50%, -50%);
-    cursor:pointer;
+    cursor:default;
     opacity:0;
     transition: opacity .4s ease;
   }
@@ -467,6 +475,7 @@
     <textarea class="type-field question-pos" id="questionInput" rows="2" enterkeyhint="done" placeholder="Question"
       autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"
       enterkeyhint="done" aria-label="Question"></textarea>
+    <div class="poke-zone" id="pokeZone"></div>
     <button class="zit-btn" id="zitBtn" type="button" tabindex="-1" aria-label=""></button>
     <button class="zit-btn zit2" id="zitBtn2" type="button" tabindex="-1" aria-label=""></button>
   </div>
@@ -2103,7 +2112,7 @@ var CARDS = (function(){
     }
     closeHoldOpenThenReveal();
   }
-  eyeStage.addEventListener('click', handleEyeTap);
+  document.getElementById('pokeZone').addEventListener('click', handleEyeTap);
 
   // ============================================================
   // public instructions drawer -- fake, in-character copy. the tab is

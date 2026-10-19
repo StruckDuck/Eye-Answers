@@ -121,6 +121,24 @@
     z-index:7;
   }
 
+  /* the poke hotspot: only the white of the eye, in stage fractions so it scales with the art */
+  .poke-zone{
+    position:absolute; left:19.4%; top:36.6%; width:62.2%; height:27.5%;
+    background:none; border:none; padding:0; margin:0; cursor:pointer;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    z-index:8;
+  }
+
+  /* eight ball mode: a second invisible hotspot on the lower-left blemish */
+  .zit-btn.zit2{ left:14.9%; top:73.6%; width:20%; height:11.5%; display:none; }
+  .eight-on .zit-btn.zit2{ display:block; }
+  .eight-set{ display:flex; flex-direction:column; gap:8px; margin-top:.7em; font-size:.88rem; }
+  .eight-set label{ display:flex; flex-direction:column; gap:4px; }
+  .eight-set .eight-row{ flex-direction:row; align-items:center; gap:10px; }
+  .eight-set input[type=text], .eight-set select{
+    font:inherit; padding:8px 10px; border-radius:8px; border:1px solid rgba(234,225,200,.4);
+    background:rgba(0,0,0,.25); color:#EAE1C8; }
+
   /* ---- public instructions drawer: one piece of art (panel + tab bump).
      closed = slid up until only the tab bump shows. all sizes are fractions
      of the drawer's own width so it scales with the art ---- */
@@ -154,14 +172,14 @@
     top: env(safe-area-inset-top, 0px);
     height: calc(64.4% - env(safe-area-inset-top, 0px));
     margin:0;
-    padding: 0 10%;
+    padding: 0 6%;
     display:flex; align-items:center; justify-content:center;
     font-family: 'Monthoers', Georgia, serif;
     color: var(--cream);
     text-shadow: 0 1px 0 rgba(40,15,10,.7);
     text-align:center;
-    font-size: calc(var(--drawer-w) * 0.05);
-    line-height:1.35;
+    font-size: calc(var(--drawer-w) * 0.07);
+    line-height:1.3;
   }
   .instructions-tab{
     position:absolute;
@@ -293,7 +311,7 @@
     width: var(--stage-w);
     aspect-ratio: 910 / 1618;
     transform: translate(-50%, -50%);
-    cursor:pointer;
+    cursor:default;
     opacity:0;
     transition: opacity .4s ease;
   }
@@ -490,8 +508,8 @@
 
 <div class="instructions-drawer" id="instructionsDrawer">
   <img class="drawer-art" src="assets/drawer.png?v=4" alt="">
-  <p class="instructions-text">Ask The Eye a question,<br>
-  Poke The Eye for your answer.</p>
+  <p class="instructions-text">Ask The Eye a Yes/No question,<br>
+  Poke the Eye for the answer.</p>
   <button class="instructions-tab" id="instructionsTab" type="button" aria-label="Instructions">
     <span>INSTRUCTIONS</span>
   </button>
@@ -510,7 +528,9 @@
     <textarea class="type-field question-pos" id="questionInput" rows="2" enterkeyhint="done" placeholder="Question"
       autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"
       enterkeyhint="done" aria-label="Question"></textarea>
+    <div class="poke-zone" id="pokeZone"></div>
     <button class="zit-btn" id="zitBtn" type="button" tabindex="-1" aria-label=""></button>
+    <button class="zit-btn zit2" id="zitBtn2" type="button" tabindex="-1" aria-label=""></button>
   </div>
 </div>
 
@@ -556,6 +576,16 @@
         </div>
       </div>
       <div class="menu-foot">&copy; 2026 Joshua Stacy. All rights reserved.</div>
+    </div>
+    <div id="secretSecret" hidden>
+      <h2 class="menu-h2">Secret Secret Menu</h2>
+      <h3 class="menu-h2" style="margin-top:1em">Eight Ball mode</h3>
+        <p>A plainer mode: The Eye answers like a magic eight ball, with the secret dropped into a short answer. The lower-left blemish banks a secret: while you type it, your preset question fills in as the decoy, the next poke gives the preset answer. Tap the blemish again to arm the reveal, then hand over the phone: the next poke, with any question typed freely, shows the banked secret.</p>
+        <div class="eight-set">
+          <label class="eight-row"><input type="checkbox" id="eightOn"> Eight Ball mode on</label>
+          <label>Preset question<input type="text" id="eightQ" autocomplete="off" autocapitalize="sentences" placeholder="Will I ever have a hot bod?"></label>
+          <label>Preset answer<select id="eightA"><option value="yes">Yes</option><option value="no">No</option><option value="random">Random</option></select></label>
+        </div>
     </div>
     <div id="secretDeep" hidden>
       <button class="secret-back" id="secretBack" type="button">&larr; Back</button>
@@ -758,6 +788,25 @@ var CARDS = (function(){
   // finishing the question however they like in the moment.
   var FILLER = 'Can you guess what they are thinking?';
 
+  // eight ball mode settings (kept on this device) and the banked secret
+  var EIGHT = { on:false, q:'', a:'random' };
+  var bankedSecret = '';
+  var bankedArmed = false; // a second lower-left tap arms the banked reveal for the next poke
+  try {
+    var es = JSON.parse(window.localStorage.getItem('eyeEight') || 'null');
+    if (es){ EIGHT.on = !!es.on; EIGHT.q = String(es.q || ''); EIGHT.a = (es.a === 'yes' || es.a === 'no') ? es.a : 'random'; }
+  } catch(err){}
+  function saveEight(){ try { window.localStorage.setItem('eyeEight', JSON.stringify(EIGHT)); } catch(err){} }
+  (function(){
+    var on = document.getElementById('eightOn'), q = document.getElementById('eightQ'), a = document.getElementById('eightA');
+    var stage = document.getElementById('eyeStage');
+    function paint(){ stage.classList.toggle('eight-on', EIGHT.on); }
+    on.checked = EIGHT.on; q.value = EIGHT.q; a.value = EIGHT.a; paint();
+    on.addEventListener('change', function(){ EIGHT.on = on.checked; if (!EIGHT.on){ bankedSecret = ''; bankedArmed = false; } paint(); saveEight(); });
+    q.addEventListener('input', function(){ EIGHT.q = q.value; saveEight(); });
+    a.addEventListener('change', function(){ EIGHT.a = a.value; saveEight(); });
+  })();
+
 
   // ============================================================
   // state
@@ -765,7 +814,7 @@ var CARDS = (function(){
   var state = { busy:false, revealed:false, holding:false };
 
   function freshCapture(){
-    return { active:false, locked:false, fillerPos:0, buffer:'', shown:'', comp:'', lastSpace:0 };
+    return { active:false, locked:false, fillerPos:0, buffer:'', shown:'', comp:'', lastSpace:0, bank:false, filler:'' };
   }
   var capture = freshCapture();
   window.__eye = { cap: function(){ return capture; } };
@@ -787,8 +836,9 @@ var CARDS = (function(){
   // and the visible text instead advances through FILLER.
   // ============================================================
   function advanceFiller(){
-    if (capture.fillerPos < FILLER.length){
-      questionInput.value += FILLER[capture.fillerPos];
+    var fill = capture.filler || FILLER;
+    if (capture.fillerPos < fill.length){
+      questionInput.value += fill[capture.fillerPos];
       capture.fillerPos += 1;
     }
     capture.shown = questionInput.value;
@@ -961,16 +1011,15 @@ var CARDS = (function(){
   // cancels the synthetic mousedown/click chain entirely on iOS Safari)
   zitBtn.addEventListener('mousedown', function(e){ e.preventDefault(); });
 
-  zitBtn.addEventListener('click', function(e){
-    e.stopPropagation();
+  function zitToggle(bank){
     if (capture.locked) return;
-
     if (!capture.active){
       capture.active = true;
-      // pick up wherever the visible question text already is, so the
-      // operator can start typing the phrase manually and trigger the
-      // zit at any point
-      capture.fillerPos = questionSpent ? 0 : Math.min(questionInput.value.length, FILLER.length);
+      // the lower-left blemish banks the secret and uses the preset question as the decoy
+      capture.bank = !!bank;
+      capture.filler = (bank && EIGHT.q.trim()) ? EIGHT.q.trim() : '';
+      var fl = capture.filler || FILLER;
+      capture.fillerPos = questionSpent ? 0 : Math.min(questionInput.value.length, fl.length);
       capture.shown = questionInput.value;
     } else {
       capture.active = false;
@@ -978,6 +1027,22 @@ var CARDS = (function(){
         capture.locked = true;
       }
     }
+  }
+  zitBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    zitToggle(false);
+  });
+  var zitBtn2 = document.getElementById('zitBtn2');
+  zitBtn2.addEventListener('mousedown', function(e){ e.preventDefault(); });
+  zitBtn2.addEventListener('click', function(e){
+    e.stopPropagation();
+    if (!EIGHT.on) return;
+    if (bankedSecret && !capture.active){
+      // a secret is already banked: this tap only arms (or disarms) its reveal, typing stays free
+      bankedArmed = !bankedArmed;
+      return;
+    }
+    zitToggle(true);
   });
 
   // ============================================================
@@ -1183,7 +1248,7 @@ var CARDS = (function(){
   // reveal and stays hidden once an answer is showing.
   // ============================================================
   function showPupil(){
-    eyeContent.innerHTML = '';
+    eyeContent.innerHTML = ''; eyeContent.style.zIndex = ''; eyeContent.style.pointerEvents = '';
     eyePupil.style.visibility = 'visible';
   }
   function hidePupil(){
@@ -1358,11 +1423,16 @@ var CARDS = (function(){
   }
 
   var lastEightBall = -1;
-  function nextEightBallAnswer(){
+  function nextEightBallAnswer(onlyYes){
+    var n = onlyYes ? 10 : EIGHT_BALL.length; // the first ten answers are the yeses
     var i;
-    do { i = Math.floor(Math.random() * EIGHT_BALL.length); } while (i === lastEightBall);
+    do { i = Math.floor(Math.random() * n); } while (i === lastEightBall && n > 1);
     lastEightBall = i;
     return EIGHT_BALL[i];
+  }
+  // a few questions always get a yes
+  function isAlwaysYes(text){
+    return /\bhot\s+bod(?:y|ies|s)?\b/i.test(String(text || ''));
   }
 
   var THIN_QUESTION_WORD_LIMIT = 6; // questions shorter than this count as thin
@@ -1450,16 +1520,16 @@ var CARDS = (function(){
   var SENTENCE_TEMPLATES = {
     name: [
       ['I am sensing the name', null], [null, 'is the obvious choice'],
-      ['A name rises from your thoughts', null], ['Someone answers to the name', null],
-      ['Your mind keeps returning to', null]
+      ['A name rises from your thoughts...', null], ['Someone answers to the name', null],
+      ['My mind keeps returning to', null]
     ],
     number: [
-      ['The number is', null], ['I counted the beats of your thought', null],
-      [null, 'the number you tried to hide'], ['The digits are clear', null],
-      ['Your number, without a doubt', null]
+      ['The number is', null], ['I counted the beats of your thought...', null],
+      [null, 'the number you tried to hide'], ['The digits are clear...', null],
+      ['Your number, without a doubt, is', null]
     ],
     color: [
-      ['I see the color', null], ['A color floods my vision', null],
+      ['I see the color', null], ['A color floods my vision...', null],
       [null, 'surrounds your thoughts'], ['The color of your mind is', null],
       [null, 'there is no doubt']
     ],
@@ -1474,8 +1544,8 @@ var CARDS = (function(){
       ['Your thoughts stop at', null]
     ],
     animal: [
-      ['A creature stirs in your mind', null], ['I hear it breathing', null],
-      [null, 'I see its eyes'], ['The animal in your mind is', null],
+      ['A creature stirs in your mind...', null], ['I hear it breathing...', null],
+      [null, 'I see its eyes...'], ['The animal in your mind is', null],
       ['I sense the animal', null]
     ],
     city: [
@@ -1505,15 +1575,18 @@ var CARDS = (function(){
     ['city', /\b(?:city|cities)\b/], ['food', /\bfoods?\b/], ['year', /\byear\b/], ['card', /\bcard\b/]
   ];
 
-  // earliest keyword in the question wins
+  // earliest keyword in the question wins. "name" is also a verb ("Can you name the
+  // animal?"), so it only counts when no other category word is in the question
   function detectCategory(question){
     var q = (question || '').toLowerCase();
-    var best = null, bestIdx = Infinity;
+    var best = null, bestIdx = Infinity, nameFound = false;
     for (var i = 0; i < CATEGORY_PATTERNS.length; i++){
       var m = CATEGORY_PATTERNS[i][1].exec(q);
-      if (m && m.index < bestIdx){ bestIdx = m.index; best = CATEGORY_PATTERNS[i][0]; }
+      if (!m) continue;
+      if (CATEGORY_PATTERNS[i][0] === 'name'){ nameFound = true; continue; }
+      if (m.index < bestIdx){ bestIdx = m.index; best = CATEGORY_PATTERNS[i][0]; }
     }
-    return best;
+    return best || (nameFound ? 'name' : null);
   }
 
 
@@ -1524,13 +1597,13 @@ var CARDS = (function(){
   // left alone and stay in the mix for every question.
   // ------------------------------------------------------------
   var PERSONAL = {
-    name:   { 2: ['A name rises from {p} thoughts', null], 4: ['{P} mind keeps returning to', null] },
-    number: { 1: ['I counted the beats of {p} thought', null], 2: [null, 'the number {S} tried to hide'],
-              4: ['{P} number, without a doubt', null] },
+    name:   { 2: ['A name rises from {p} thoughts...', null] },
+    number: { 1: ['I counted the beats of {p} thought...', null], 2: [null, 'the number {S} tried to hide'],
+              4: ['{P} number, without a doubt, is', null] },
     color:  { 2: [null, 'surrounds {p} thoughts'], 3: ['The color of {p} mind is', null] },
     month:  { 1: ['{P} {mod}month is', null], 2: [null, 'is circled in {p} mind'] },
     day:    { 1: ['{P} {mod}day is', null], 2: [null, 'is circled in {p} mind'], 4: ['{P} thoughts stop at', null] },
-    animal: { 0: ['A creature stirs in {p} mind', null], 3: ['The animal in {p} mind is', null] },
+    animal: { 0: ['A creature stirs in {p} mind...', null], 3: ['The animal in {p} mind is', null] },
     city:   { 0: ['In {p} mind, {S} {be} standing in', null], 1: ['{S} {be} thinking of', null],
               2: [null, 'pulls at {p} thoughts'] },
     year:   { 2: [null, 'is etched in {p} memory'], 4: ['{P} mind drifts back to', null] },
@@ -1731,6 +1804,59 @@ var CARDS = (function(){
     return str.toLowerCase().replace(/(^|[\s\-'])([a-z])/g, function(m, a, b){ return a + b.toUpperCase(); });
   }
 
+  // ------------------------------------------------------------
+  // eight ball mode answers. [ANSWER] marks where the secret goes. with a
+  // secret only the lines that carry the slot are used; without one every
+  // line is available and the slot reads "yes".
+  // ------------------------------------------------------------
+  var EB_YES = [
+    'Without a doubt, [ANSWER].', '[ANSWER] it is certain.', '[ANSWER], and you know it.',
+    'The signs are clear. [ANSWER].', 'Most likely.', '[ANSWER].', '[ANSWER] You may rely on it.',
+    'The outlook is bright.', 'All paths lead to [ANSWER].', 'I have seen it. [ANSWER].'
+  ];
+  var EB_ASK = [
+    'Your question is clouded by doubt. Ask again.', 'You are not ready to hear it. Ask later.',
+    'Quiet your mind, then ask again.', 'You asked too quickly. Ask again.', 'Your thoughts are scattered. Ask again.'
+  ];
+  var EB_NO = ['No.', 'Do not count on it.', 'The outlook is dark.', 'Very doubtful.', 'My sight says no.'];
+  var ebLast = '';
+  function ebPick(list){
+    var t;
+    do { t = list[Math.floor(Math.random() * list.length)]; } while (t === ebLast && list.length > 1);
+    ebLast = t;
+    return t;
+  }
+  function ebSentence(t){ return t.replace(/(^|[.!?] )([a-z])/g, function(m, a, b){ return a + b.toUpperCase(); }); }
+  // kind: 'yes', 'no' or 'any' (10 yes, 5 ask again, 5 no)
+  function ebStock(kind){
+    var list = kind === 'yes' ? EB_YES : kind === 'no' ? EB_NO : EB_YES.concat(EB_ASK, EB_NO);
+    return ebSentence(ebPick(list).replace('[ANSWER]', 'yes'));
+  }
+  var EB_RANK_WORDS = { '2':'Two','3':'Three','4':'Four','5':'Five','6':'Six','7':'Seven','8':'Eight','9':'Nine','10':'Ten' };
+  function ebSecretWord(secret, question){
+    var disp = secretToDisplay(secret);
+    var cat = detectCategory(question);
+    if (cat === 'name') return capitalizeName(disp);
+    var card = secretToCard(secret); // read by content, so "7c" or "ah" works without the word card
+    if (card){
+      var r = EB_RANK_WORDS[card.text] || card.text;
+      var su = card.suit.charAt(0).toUpperCase() + card.suit.slice(1) + 's';
+      return r + ' of ' + su;
+    }
+    if (cat === 'year') return secretToYear(secret, disp);
+    return disp;
+  }
+  function eightBallText(asked, secret){
+    if (asked.presetAnswer){
+      return ebStock(EIGHT.a === 'random' ? 'any' : EIGHT.a);
+    }
+    if (!secret) return ebStock(isAlwaysYes(asked.question) ? 'yes' : 'any');
+    var slots = EB_YES.filter(function(t){ return t.indexOf('[ANSWER]') >= 0; });
+    var word = ebSecretWord(secret, asked.question);
+    var line = ebSentence(ebPick(slots).replace('[ANSWER]', word));
+    return line.charAt(0).toUpperCase() + line.slice(1);
+  }
+
   // asked = { secret, words, question } taken at the moment of the poke, because the
   // field and the secret entry are cleared right then so a new question can
   // be started as soon as the answer is up
@@ -1738,7 +1864,20 @@ var CARDS = (function(){
     var secret = (asked.secret || '').trim();
     var answer = secretToDisplay(secret);
     var template = null, cardSuit = null;
-    if (answer){
+    eyeContent.style.zIndex = ''; eyeContent.style.pointerEvents = '';
+    // typing the site's address with no secret shows a QR code to the site
+    if (!answer && /^\s*(?:https?:\/\/)?(?:www\.)?eyeknowsall\.com\/?\s*\??\s*$/i.test(asked.question || '')){
+      var qh = eyeLid.getBoundingClientRect().height * 0.44;
+      var qel = document.createElement('div');
+      qel.className = 'reveal-answer reveal-qr';
+      qel.style.cssText = 'width:' + qh + 'px;height:' + qh + 'px;';
+      qel.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" width="100%" height="100%" shape-rendering="crispEdges" style="display:block" role="img" aria-label="QR code to eyeknowsall.com"><path stroke="#24170F" d="M0 0.5h7m1 0h1m2 0h1m2 0h1m3 0h7m-25 1h1m5 0h1m1 0h1m3 0h2m2 0h1m1 0h1m5 0h1m-25 1h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m1 0h2m1 0h1m1 0h3m1 0h1m-25 1h1m1 0h3m1 0h1m4 0h3m2 0h1m1 0h1m1 0h3m1 0h1m-25 1h1m1 0h3m1 0h1m1 0h1m4 0h2m1 0h1m1 0h1m1 0h3m1 0h1m-25 1h1m5 0h1m4 0h2m1 0h1m3 0h1m5 0h1m-25 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-15 1h1m2 0h3m-16 1h1m2 0h6m2 0h1m3 0h1m1 0h1m2 0h1m1 0h3m-24 1h1m2 0h2m1 0h1m1 0h1m1 0h5m1 0h1m1 0h5m-20 1h3m1 0h1m1 0h1m2 0h1m1 0h3m1 0h3m2 0h1m-25 1h1m1 0h4m1 0h2m1 0h1m1 0h1m2 0h1m2 0h2m1 0h4m-20 1h3m1 0h1m5 0h1m2 0h2m4 0h1m-25 1h1m3 0h1m5 0h1m1 0h5m3 0h1m2 0h1m-24 1h3m2 0h3m1 0h2m4 0h1m1 0h2m1 0h5m-25 1h1m2 0h1m3 0h1m4 0h1m2 0h1m1 0h3m1 0h2m1 0h1m-25 1h1m1 0h1m1 0h1m1 0h1m2 0h5m2 0h5m1 0h2m-16 1h1m1 0h2m1 0h1m2 0h1m3 0h1m1 0h2m-24 1h7m1 0h1m3 0h1m3 0h1m1 0h1m1 0h1m3 0h1m-25 1h1m5 0h1m1 0h1m2 0h1m1 0h1m1 0h2m3 0h1m2 0h1m-24 1h1m1 0h3m1 0h1m1 0h1m1 0h3m1 0h7m2 0h2m-25 1h1m1 0h3m1 0h1m1 0h2m2 0h3m2 0h2m4 0h2m-25 1h1m1 0h3m1 0h1m2 0h4m3 0h2m2 0h5m-25 1h1m5 0h1m4 0h2m1 0h1m2 0h1m1 0h2m1 0h3m-25 1h7m1 0h7m1 0h1m4 0h1m2 0h1"/></svg>';
+      eyeContent.appendChild(qel);
+      return;
+    }
+    if (EIGHT.on){
+      answer = eightBallText(asked, secret);
+    } else if (answer){
       var category = detectCategory(asked.question);
       if (category){
         template = pickTemplate(category, detectSubject(asked.question, category));
@@ -1752,7 +1891,7 @@ var CARDS = (function(){
       }
     } else {
       if (isYesNoQuestion(asked.question)){
-        answer = nextEightBallAnswer();
+        answer = nextEightBallAnswer(isAlwaysYes(asked.question));
       } else {
         answer = (asked.words >= THIN_QUESTION_WORD_LIMIT)
           ? nextFullFailurePhrase()
@@ -1961,6 +2100,18 @@ var CARDS = (function(){
     // keep what the reveal needs, then clear the field and the secret entry
     // right away so the next question can be typed immediately
     var asked = { secret: capture.buffer, words: wordCount(questionInput.value), question: questionInput.value };
+    if (EIGHT.on){
+      if (capture.bank && capture.buffer.trim()){
+        // banked: this poke gives the preset answer, the secret waits for the next one
+        bankedSecret = capture.buffer;
+        asked.secret = '';
+        asked.presetAnswer = true;
+      } else if (!capture.buffer.trim() && bankedSecret && bankedArmed){
+        asked.secret = bankedSecret;
+        bankedSecret = '';
+        bankedArmed = false;
+      }
+    }
     // the question stays in the box until it is tapped again
     questionSpent = true;
     capture = freshCapture();
@@ -2005,15 +2156,24 @@ var CARDS = (function(){
     // a poke only counts as a question once something has been entered;
     // otherwise it is just a normal blink. the full reveal also runs right
     // after a previous one, so no RESET is needed between questions
+    // typing "secret secret menu" (no secret entered) and poking opens the hidden settings
+    if (!questionSpent && !(capture.buffer || '').trim() && /^\s*secret\s+secret\s+menu\s*[?.!]*\s*$/i.test(questionInput.value)){
+      questionInput.value = '';
+      capture = freshCapture();
+      openSecretSecret();
+      return;
+    }
     var entered = (!questionSpent && questionInput.value.trim() !== '') || (capture.buffer || '').trim() !== '';
     if (!entered){
+      // an empty poke right after a reveal is a soft reset
+      if (state.revealed){ resetAll(true); return; }
       clearIdleBlink();
       playQuickBlink(scheduleIdleBlink);
       return;
     }
     closeHoldOpenThenReveal();
   }
-  eyeStage.addEventListener('click', handleEyeTap);
+  document.getElementById('pokeZone').addEventListener('click', handleEyeTap);
 
   // ============================================================
   // public instructions drawer -- fake, in-character copy. the tab is
@@ -2031,7 +2191,9 @@ var CARDS = (function(){
   // ============================================================
   var secretMain = document.getElementById('secretMain');
   var secretDeep = document.getElementById('secretDeep');
-  function showSecretMain(){ secretDeep.hidden = true; secretMain.hidden = false; var pn = secretOverlay.querySelector('.secret-panel'); if (pn) pn.scrollTop = 0; }
+  var secretSecret = document.getElementById('secretSecret');
+  function openSecretSecret(){ if (document.activeElement === questionInput) questionInput.blur(); secretMain.hidden = true; secretDeep.hidden = true; secretSecret.hidden = false; var pn = secretOverlay.querySelector('.secret-panel'); if (pn) pn.scrollTop = 0; secretOverlay.classList.add('open'); }
+  function showSecretMain(){ secretSecret.hidden = true; secretDeep.hidden = true; secretMain.hidden = false; var pn = secretOverlay.querySelector('.secret-panel'); if (pn) pn.scrollTop = 0; }
   function openSecretPanel(){ if (document.activeElement === questionInput) questionInput.blur(); showSecretMain(); secretOverlay.classList.add('open'); }
   function closeSecretPanel(){ secretOverlay.classList.remove('open'); }
   document.getElementById('secretDeeper').addEventListener('click', function(e){
@@ -2058,14 +2220,17 @@ var CARDS = (function(){
       card: 'Spell a playing card, like \u201cseven c\u201d. The decoy sentence will appear as you type.'
     };
     function clearResult(){ out.textContent = ''; note.textContent = ''; }
+    var locked = false, secret = '', lockedLen = 0, lastSp = 0;
     function showTyping(){
-      var n = Math.min(inp.value.length, FILLER.length);
+      // after the lock, whatever is typed is just the rest of the question; the lock itself counts as one keystroke
+      var len = locked ? secret.length + 1 + Math.max(0, inp.value.length - lockedLen) : inp.value.length;
+      var n = Math.min(len, FILLER.length);
       decoy.textContent = n ? FILLER.slice(0, n) : 'Question';
       decoy.classList.toggle('empty', !n);
-      typed.textContent = inp.value ? 'You typed: ' + inp.value : '';
+      typed.textContent = locked ? 'Secret locked in: ' + secret : (inp.value ? 'You typed: ' + inp.value : '');
     }
     function reveal(){
-      var raw = inp.value.trim(), res = '', msg = '';
+      var raw = (locked ? secret : inp.value).trim(), res = '', msg = '';
       if (!raw){ clearResult(); note.textContent = 'Type a secret first.'; return; }
       if (mode === 'number'){
         var d = secretToDisplay(raw);
@@ -2077,7 +2242,16 @@ var CARDS = (function(){
         res = y;
       } else {
         var c = secretToCard(raw);
-        if (c) res = c.text + ' ' + SUIT_CHARS[c.suit];
+        if (c){
+          res = c.text + ' ' + SUIT_CHARS[c.suit];
+          var rk = { Ace:'A', Jack:'J', Queen:'Q', King:'K' }[c.text] || parseInt(c.text, 10);
+          try {
+            out.innerHTML = CARDS.svg(rk, c.suit, 'app');
+            var sv = out.firstChild; sv.style.height = '210px'; sv.style.width = 'auto'; sv.style.display = 'block'; sv.style.margin = '0 auto';
+            sv.style.filter = 'drop-shadow(0 3px 6px rgba(0,0,0,.35))';
+            note.textContent = msg; inp.blur(); return;
+          } catch (err){}
+        }
         else { res = raw; msg = 'The Eye can\u2019t read that as a card, so it would show it as typed.'; }
       }
       out.textContent = res; note.textContent = msg;
@@ -2087,9 +2261,27 @@ var CARDS = (function(){
       mode = this.getAttribute('data-mode');
       for (var k = 0; k < modes.length; k++) modes[k].classList.toggle('on', modes[k] === this);
       hint.textContent = HINTS[mode];
-      inp.value = ''; showTyping(); clearResult();
+      inp.value = ''; locked = false; secret = ''; showTyping(); clearResult();
     });
-    inp.addEventListener('input', function(){ showTyping(); clearResult(); });
+    // double-space lock, like the real app: two quick spaces (or the iPhone's ". " shortcut) lock the secret in
+    function lockIn(){
+      inp.value = inp.value.replace(/[\s.]+$/, '');
+      if (!inp.value){ lastSp = 0; return; }
+      locked = true; secret = inp.value; lockedLen = secret.length; lastSp = 0;
+      showTyping();
+    }
+    inp.addEventListener('input', function(e){
+      var now = Date.now(), v = inp.value, d = e.data;
+      if (locked){
+        if (v.length < lockedLen){ locked = false; secret = ''; } // backed into the secret: unlock
+        else { showTyping(); clearResult(); return; }
+      }
+      var hasSecret = v.replace(/\s+/g, '').length > 0;
+      if (hasSecret && /[^\s.]\.\s$/.test(v) && (e.inputType === 'insertReplacementText' || d === ' ' || d === '. ' || d === '.\u00a0')){ lockIn(); clearResult(); return; }
+      if (hasSecret && /\s\s$/.test(v) && lastSp && now - lastSp < 600){ lockIn(); clearResult(); return; }
+      lastSp = (d === ' ') ? now : 0;
+      showTyping(); clearResult();
+    });
     inp.addEventListener('focus', function(){ box.classList.add('focus'); });
     inp.addEventListener('blur', function(){ box.classList.remove('focus'); });
     inp.addEventListener('keydown', function(e){ if (e.key === 'Enter'){ e.preventDefault(); inp.blur(); } });
@@ -2203,7 +2395,10 @@ var CARDS = (function(){
   // ============================================================
   var RESET_HOLD_MS = 300;
 
-  async function resetAll(){
+  // soft === true: a poke after a reveal. same shut-and-reopen, but the banked secret
+  // and any armed secret entry are kept; only the question box and pupil are refreshed
+  async function resetAll(soft){
+    soft = (soft === true);
     if (!ready) return;
     if (state.busy && !state.holding) return;
     var alreadyShut = state.holding;
@@ -2221,7 +2416,13 @@ var CARDS = (function(){
     drawFrame(CLOSED_A);
     questionInput.value = '';
     questionSpent = false;
-    capture = freshCapture();
+    if (!soft){
+      capture = freshCapture();
+      bankedSecret = '';
+      bankedArmed = false;
+    } else {
+      capture.fillerPos = 0; capture.shown = '';
+    }
     state.revealed = false;
     showPupil();
 
@@ -2232,7 +2433,7 @@ var CARDS = (function(){
     finishSequence();
     if (my === runId){ scheduleIdleBlink(); scheduleSaccade(); }
   }
-  resetBtn.addEventListener('click', resetAll);
+  resetBtn.addEventListener('click', function(){ resetAll(); });
 
   // ============================================================
   // init: nothing is shown or pokeable until every image is in
