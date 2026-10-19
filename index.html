@@ -1291,6 +1291,10 @@ var CARDS = (function(){
     return null;
   }
 
+  // categories whose answer is never a number: the entry is shown as typed, so a
+  // close-sounding name like "Steven" is not corrected into 7
+  var NON_NUMERIC_CATEGORY = { name:1, color:1, animal:1, city:1, food:1, month:1 };
+
   // what the reveal should show for a secret entry
   function secretToDisplay(secret){
     if (/^\d+$/.test(secret)) return secret; // digits typed straight in show as typed
@@ -1773,8 +1777,8 @@ var CARDS = (function(){
   }
   var EB_RANK_WORDS = { '2':'Two','3':'Three','4':'Four','5':'Five','6':'Six','7':'Seven','8':'Eight','9':'Nine','10':'Ten' };
   function ebSecretWord(secret, question){
-    var disp = secretToDisplay(secret);
     var cat = detectCategory(question);
+    var disp = (cat && NON_NUMERIC_CATEGORY[cat]) ? secret : secretToDisplay(secret);
     if (cat === 'name') return capitalizeName(disp);
     var card = secretToCard(secret); // read by content, so "7c" or "ah" works without the word card
     if (card){
@@ -1817,6 +1821,7 @@ var CARDS = (function(){
       answer = eightBallText(asked, secret);
     } else if (answer){
       var category = detectCategory(asked.question);
+      if (category && NON_NUMERIC_CATEGORY[category]) answer = secret;
       if (category){
         template = pickTemplate(category, detectSubject(asked.question, category));
         if (category === 'name') answer = capitalizeName(answer);
