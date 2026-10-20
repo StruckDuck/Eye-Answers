@@ -2586,6 +2586,7 @@ var CARDS = (function(){
   var zit = document.getElementById('zitBtn'), box = document.getElementById('questionInput');
   var eyeWin = document.getElementById('eyeContent'), resetBtn = document.getElementById('resetBtn');
 
+  var zitGot = false;
   var step = 0, ringEl = null, ringLabel = '', target = '', timer = null, active = false;
 
   function norm(s){ return (s || '').replace(/[’‘]/g, "'").toLowerCase(); }
@@ -2609,12 +2610,14 @@ var CARDS = (function(){
     var limit = vv ? vv.offsetTop + vv.height : window.innerHeight;
     var kb = document.getElementById('vkb');
     if (kb){ var kr = kb.getBoundingClientRect(); if (kr.height > 0 && kr.top < limit) limit = kr.top; }
-    var gap = 14, margin = 12;
+    var gap = 14, margin = 12, above = false;
     var w = Math.min(420, vw - margin * 2), left = (vw - w) / 2, top = null;
     function below(el){ var r = el.getBoundingClientRect(); return r.bottom + gap + 8; }
     if (step === 2 || step === 5){
       var z = zit.getBoundingClientRect();
       w = Math.max(190, Math.min(300, z.left - margin - 16)); left = margin; top = z.top;
+    } else if (step === 1.5 || step === 3){
+      above = true;
     } else if (step === 4 || step === 6){
       top = below(box);
     } else if (step >= 7){
@@ -2623,6 +2626,7 @@ var CARDS = (function(){
     panel.style.transform = 'none'; panel.style.bottom = 'auto';
     panel.style.left = left + 'px'; panel.style.width = w + 'px';
     panel.classList.remove('tight'); panel.classList.remove('tight2'); panel.style.maxHeight = ''; panel.style.overflowY = '';
+    if (above){ var dr = document.querySelector('.zit-mark.top').getBoundingClientRect(); top = Math.max(margin, dr.top - panel.offsetHeight - 44); }
     if (top === null){ top = Math.max(margin, limit - panel.offsetHeight - margin); }
     var h = panel.offsetHeight;
     if (top + h > limit - 8){
@@ -2668,9 +2672,22 @@ var CARDS = (function(){
         '<div class="coach-row"><button class="coach-skip" data-a="skip" type="button">Exit demo</button><button class="coach-btn" data-a="next" type="button">Next</button></div>';
       dim.classList.add('show'); return;
     }
+    if (n === 1.5){
+      zitGot = false;
+      setRing(document.querySelector('.zit-mark.top'), '');
+      show(head(0, 'Two small dots') + '<p class="coach-text">Locate the two dots in the bottom right corner. The rightmost dot will disappear once the secret button is pressed to indicate that you are in secret entry mode.</p>' + foot('Got it')); return;
+    }
+    if (n === 3){
+      setRing(document.querySelector('.zit-mark.top'), '');
+      show(head(0, 'Secret entry mode') + '<p class="coach-text">Look at the bottom right corner. The rightmost dot has disappeared. That tells you that you are in secret entry mode.</p>' + foot('Got it')); return;
+    }
+    if (n === 2 && !zitGot){
+      setRing(zit, 'The zit');
+      show(head(2, 'Find the secret button') + '<p class="coach-text">See the bump above and to the right of the eye? That’s the zit.</p><p class="coach-text" style="margin-top:8px">When you tap it, nothing will appear to happen on the eye, but the secret word is ready to be entered.</p>' + foot('Got it')); return;
+    }
     if (n === 2){
       setRing(zit, 'The zit. Tap it once');
-      show(head(2, 'Find the secret button') + '<p class="coach-text">See the bump above and to the right of the eye? That’s the zit.</p><p class="coach-text" style="margin-top:8px">Tap the zit. Nothing will appear to happen on the eye, but the secret word is ready to be entered.</p><p class="coach-text" style="margin-top:8px">Look near the bottom right corner. One of the two small dots just disappeared. That is your confirmation.</p>' + foot('')); return;
+      show(head(2, 'Find the secret button') + '<p class="coach-text">Tap the zit now.</p>' + foot('')); return;
     }
     if (n === 4){
       gotIt = false; lastType = '';
@@ -2740,7 +2757,7 @@ var CARDS = (function(){
 
   var blk = document.getElementById('coachBlock');
   function syncBlock(){
-    var on = active && step === 4 && !gotIt;
+    var on = active && ((step === 4 && !gotIt) || step === 1.5 || step === 3 || (step === 2 && !zitGot));
     if (on && !blk.classList.contains('show') && document.activeElement && document.activeElement.blur){ try { document.activeElement.blur(); } catch (e) {} }
     blk.classList.toggle('show', on);
   }
@@ -2748,7 +2765,8 @@ var CARDS = (function(){
     syncBlock();
     if (!active) return;
     var c = E.cap();
-    if (step === 2 && c.active){ go(4); return; }
+    if (step === 2 && c.active){ go(3); return; }
+    if (step === 3 && !c.active && !c.locked){ go(2); return; }
     if (step === 4){
       var b = (c.buffer || '').toLowerCase();
       if (gotIt && b.length > 0 && SECRET.indexOf(b) !== 0 && b.indexOf(SECRET) !== 0){ renderType('That isn’t ' + esc(WORD) + '. Tap Reset, then start again from the zit.'); return; }
@@ -2773,7 +2791,7 @@ var CARDS = (function(){
   function onClick(e){
     var a = e.target && e.target.getAttribute && e.target.getAttribute('data-a');
     if (!a) return;
-    if (a === 'next'){ if (step === 4 && !gotIt){ gotIt = true; syncBlock(); renderType(); } else { if (step === 6){ try { box.blur(); } catch (err){} } go(step + 1); } }
+    if (a === 'next'){ if (step === 1){ go(1.5); } else if (step === 1.5){ go(2); } else if (step === 2 && !zitGot){ zitGot = true; go(2); } else if (step === 3){ go(4); } else if (step === 4 && !gotIt){ gotIt = true; syncBlock(); renderType(); } else { if (step === 6){ try { box.blur(); } catch (err){} } go(step + 1); } }
     else if (a === 'skip'){ window.location.href = 'index.html?menu'; }
     else if (a === 'again'){
       panel.classList.remove('show'); swipeOn = false; placeSwipe(); setRing(null);
