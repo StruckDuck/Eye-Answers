@@ -121,6 +121,17 @@
     z-index:7;
   }
 
+  /* indicators: flat patches that hide the two dots near the bottom of the art.
+     left dot = lower-left zit (entry in progress, or a banked secret waiting);
+     right dot = top zit (entry in progress) */
+  .zit-mark{
+    position:absolute; left:84.5%; top:94.6%; width:2.3%; aspect-ratio:1/1;
+    transform:translate(-50%,-50%); border-radius:50%;
+    background:#C2B595; opacity:0; pointer-events:none; z-index:5;
+  }
+  .zit-mark.top{ left:87.4%; top:94.1%; width:2.1%; }
+  .zit-armed .zit-mark.low, .zit-top-armed .zit-mark.top{ opacity:1; }
+
   /* the poke hotspot: only the white of the eye, in stage fractions so it scales with the art */
   .poke-zone{
     position:absolute; left:19.4%; top:36.6%; width:62.2%; height:27.5%;
@@ -528,6 +539,8 @@
     <textarea class="type-field question-pos" id="questionInput" rows="2" enterkeyhint="done" placeholder="Question"
       autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"
       enterkeyhint="done" aria-label="Question"></textarea>
+    <div class="zit-mark low" aria-hidden="true"></div>
+    <div class="zit-mark top" aria-hidden="true"></div>
     <div class="poke-zone" id="pokeZone"></div>
     <button class="zit-btn" id="zitBtn" type="button" tabindex="-1" aria-label=""></button>
     <button class="zit-btn zit2" id="zitBtn2" type="button" tabindex="-1" aria-label=""></button>
@@ -796,6 +809,15 @@ var CARDS = (function(){
     var es = JSON.parse(window.localStorage.getItem('eyeEight') || 'null');
     if (es){ EIGHT.on = !!es.on; EIGHT.q = String(es.q || ''); EIGHT.a = (es.a === 'yes' || es.a === 'no') ? es.a : 'random'; }
   } catch(err){}
+  // keep the dot indicator in step with the secret entry state
+  setInterval(function(){
+    var entering = !!(capture.active || capture.locked);
+    var low = !!((entering && capture.bank) || bankedSecret);
+    var top = entering && !capture.bank;
+    var st = document.getElementById('eyeStage');
+    if (st.classList.contains('zit-armed') !== low) st.classList.toggle('zit-armed', low);
+    if (st.classList.contains('zit-top-armed') !== top) st.classList.toggle('zit-top-armed', top);
+  }, 100);
   function saveEight(){ try { window.localStorage.setItem('eyeEight', JSON.stringify(EIGHT)); } catch(err){} }
   (function(){
     var on = document.getElementById('eightOn'), q = document.getElementById('eightQ'), a = document.getElementById('eightA');
